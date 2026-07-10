@@ -138,6 +138,7 @@ const COINGECKO_IDS: Record<string, string> = {
   BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin',
   DOGE: 'dogecoin', ADA: 'cardano', AVAX: 'avalanche-2',
   LINK: 'chainlink', DOT: 'polkadot', MATIC: 'matic-network',
+  XRP: 'ripple',
 }
 
 export async function fetchCryptoSnapshot(ticker: string): Promise<MarketSnapshot> {
@@ -191,32 +192,31 @@ export async function fetchCryptoSnapshot(ticker: string): Promise<MarketSnapsho
 // ── Batch fetch all tracked assets ────────────────────────
 
 export const TRACKED_ASSETS = {
-  stocks: ['NVDA', 'AAPL', 'MSFT', 'META', 'GOOGL', 'AMZN', 'TSLA', 'AMD'],
-  crypto: ['BTC', 'ETH', 'SOL', 'BNB', 'AVAX'],
+  stocks: [
+    'NVDA', 'AAPL', 'MSFT', 'META', 'GOOGL', 'AMZN', 'TSLA', 'AMD',
+    'NFLX', 'COIN', 'PLTR', 'AVGO', 'JPM', 'SPY',
+  ],
+  crypto: ['BTC', 'ETH', 'SOL', 'BNB', 'AVAX', 'DOGE', 'ADA', 'LINK', 'DOT', 'XRP'],
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 export async function fetchAllMarketData(): Promise<MarketSnapshot[]> {
-  // Both providers' free tiers are strict about requests-per-minute, so all
-  // fetching is sequential and paced. Polygon free = 5 req/min → 13s between
-  // stock requests. Slow, but results are cached for an hour after each run.
-  const results: (MarketSnapshot | null)[] = []
+  // Polygon Starter plan has no request-per-minute cap — fetch all stocks in
+  // parallel. CoinGecko's demo tier (30 req/min) still needs pacing: each
+  // coin is 2 requests, so 3s between coins keeps us safely under the limit.
+  const stockPromises = TRACKED_ASSETS.stocks.map(t =>
+    fetchStockSnapshot(t).catch(e => { console.error(`Stock fetch failed: ${t}`, e); return null })
+  )
 
-  for (let i = 0; i < TRACKED_ASSETS.stocks.length; i++) {
-    const t = TRACKED_ASSETS.stocks[i]
-    results.push(
-      await fetchStockSnapshot(t).catch(e => { console.error(`Stock fetch failed: ${t}`, e); return null })
-    )
-    if (i < TRACKED_ASSETS.stocks.length - 1) await sleep(13000)
-  }
-
+  const cryptoResults: (MarketSnapshot | null)[] = []
   for (const t of TRACKED_ASSETS.crypto) {
-    results.push(
+    cryptoResults.push(
       await fetchCryptoSnapshot(t).catch(e => { console.error(`Crypto fetch failed: ${t}`, e); return null })
     )
     await sleep(3000)
   }
 
+  const results = [...(await Promise.all(stockPromises)), ...cryptoResults]
   return results.filter(Boolean) as MarketSnapshot[]
 }
