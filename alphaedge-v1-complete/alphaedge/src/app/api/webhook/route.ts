@@ -12,7 +12,19 @@ export async function POST(req: NextRequest) {
     event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch (err: any) {
     console.error('Webhook signature failed:', err.message)
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+    // Temporary diagnostics surfaced in Stripe's delivery log to debug secret
+    // mismatches. The prefix/length reveal nothing usable to an attacker.
+    const secret = process.env.STRIPE_WEBHOOK_SECRET
+    return NextResponse.json({
+      error: 'Invalid signature',
+      diagnostic: {
+        secretConfigured: Boolean(secret),
+        secretPrefix: secret ? secret.slice(0, 10) : null,
+        secretLength: secret?.length ?? 0,
+        signatureHeaderPresent: Boolean(sig),
+        stripeError: String(err.message).slice(0, 200),
+      },
+    }, { status: 400 })
   }
 
   const supabase = createAdminClient()
