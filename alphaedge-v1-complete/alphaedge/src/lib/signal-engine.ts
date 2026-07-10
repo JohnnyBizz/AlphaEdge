@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { MarketSnapshot } from './market-data'
-import { createAdminClient } from './supabase'
+import { createAdminClient } from './supabase/admin'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
