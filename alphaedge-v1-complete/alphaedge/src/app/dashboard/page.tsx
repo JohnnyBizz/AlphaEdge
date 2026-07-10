@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
-  TrendingUp, RefreshCw, LogOut, BarChart2, Bitcoin, Building2, Eye, Settings,
+  TrendingUp, RefreshCw, LogOut, BarChart2, Bitcoin, Building2, Eye, Settings, CreditCard,
 } from 'lucide-react'
 
 type Signal = {
@@ -71,6 +71,7 @@ export default function DashboardPage() {
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [billingLoading, setBillingLoading] = useState(false)
 
   const fetchSignals = useCallback(async (force = false) => {
     force ? setRefreshing(true) : setLoading(true)
@@ -106,6 +107,19 @@ export default function DashboardPage() {
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.push('/auth')
+  }
+
+  async function handleBilling() {
+    setBillingLoading(true)
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const { url, error } = await res.json()
+      if (url) { window.location.href = url; return }
+      setError(error ?? 'Could not open the billing portal')
+    } catch {
+      setError('Could not open the billing portal')
+    }
+    setBillingLoading(false)
   }
 
   const filtered = signals.filter(s => {
@@ -148,6 +162,12 @@ export default function DashboardPage() {
             <Settings size={12} />
             <span className="hidden md:inline">Profile</span>
           </Link>
+          <button onClick={handleBilling} disabled={billingLoading} title="Manage billing or cancel subscription"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <CreditCard size={12} />
+            <span className="hidden md:inline">{billingLoading ? 'Opening…' : 'Billing'}</span>
+          </button>
           <button onClick={() => fetchSignals(true)} disabled={refreshing}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)', cursor: 'pointer' }}>

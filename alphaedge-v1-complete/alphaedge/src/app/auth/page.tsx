@@ -22,6 +22,24 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [notice, setNotice] = useState<string | null>(null)
+
+  async function handleForgotPassword() {
+    setError(null)
+    setNotice(null)
+    if (!email) {
+      setError('Enter your email above first, then click "Forgot password?".')
+      return
+    }
+    setLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset`,
+    })
+    setLoading(false)
+    if (error) setError(error.message)
+    else setNotice(`Password reset link sent to ${email} — check your inbox.`)
+  }
+
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -201,6 +219,15 @@ export default function AuthPage() {
                   {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
+              {tab === 'signin' && (
+                <div className="text-right mt-1.5">
+                  <button type="button" onClick={handleForgotPassword} disabled={loading}
+                    className="text-xs"
+                    style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                    Forgot password?
+                  </button>
+                </div>
+              )}
             </div>
 
             {tab === 'signup' && (
@@ -240,6 +267,12 @@ export default function AuthPage() {
             {error && (
               <div className="text-sm px-3 py-2.5 rounded-lg" style={{ background: 'var(--red-dim)', color: 'var(--red)' }}>
                 {error}
+              </div>
+            )}
+
+            {notice && (
+              <div className="text-sm px-3 py-2.5 rounded-lg" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+                {notice}
               </div>
             )}
 
