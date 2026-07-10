@@ -176,6 +176,14 @@ export async function generateAndCacheAllSignals(
 
   await supabase.from('signals').delete().lt('expires_at', new Date().toISOString())
 
+  // Replace any still-fresh rows for the tickers we're about to insert, so
+  // overlapping runs don't leave duplicate cards on the dashboard. Tickers
+  // not in this batch (e.g. crypto when only stocks refreshed) keep their
+  // previous unexpired signals.
+  if (results.length > 0) {
+    await supabase.from('signals').delete().in('ticker', results.map(s => s.ticker))
+  }
+
   const { error } = await supabase.from('signals').insert(
     results.map(s => ({
       ...s,
