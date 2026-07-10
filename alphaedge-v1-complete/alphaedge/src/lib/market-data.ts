@@ -147,7 +147,10 @@ export async function fetchCryptoSnapshot(ticker: string): Promise<MarketSnapsho
 
   const [marketRes, ohlcvRes] = await Promise.all([
     fetch(`${COINGECKO_BASE}/coins/${coinId}?localization=false&tickers=false&community_data=false`, { headers }),
-    fetch(`${COINGECKO_BASE}/coins/${coinId}/ohlc?vs_currency=usd&days=60`, { headers }),
+    // Note: CoinGecko's OHLC endpoint only accepts days=1|7|14|30|90|180|365
+    // (60 is rejected with a 400). 180 days yields ~45 four-day candles —
+    // enough history for the RSI/MACD/Bollinger calculations.
+    fetch(`${COINGECKO_BASE}/coins/${coinId}/ohlc?vs_currency=usd&days=180`, { headers }),
   ])
 
   if (!marketRes.ok || !ohlcvRes.ok) {
