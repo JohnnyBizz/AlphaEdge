@@ -91,7 +91,15 @@ export async function fetchStockSnapshot(ticker: string): Promise<MarketSnapshot
     fetch(`${POLYGON_BASE}/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}?apiKey=${apiKey}`),
   ])
 
+  if (!aggRes.ok || !snapshotRes.ok) {
+    throw new Error(`Polygon ${aggRes.ok ? snapshotRes.status : aggRes.status} for ${ticker}: ${(await (aggRes.ok ? snapshotRes : aggRes).text()).slice(0, 200)}`)
+  }
+
   const [aggData, snapshotData] = await Promise.all([aggRes.json(), snapshotRes.json()])
+
+  if (!Array.isArray(aggData.results) || aggData.results.length === 0) {
+    throw new Error(`Polygon returned no OHLCV data for ${ticker}: ${JSON.stringify(aggData).slice(0, 200)}`)
+  }
 
   const results: any[] = aggData.results ?? []
   const snap = snapshotData.ticker ?? {}
@@ -142,7 +150,16 @@ export async function fetchCryptoSnapshot(ticker: string): Promise<MarketSnapsho
     fetch(`${COINGECKO_BASE}/coins/${coinId}/ohlc?vs_currency=usd&days=60`, { headers }),
   ])
 
+  if (!marketRes.ok || !ohlcvRes.ok) {
+    // CoinGecko rate-limit errors come back as plain text ("Throttled"), not JSON
+    throw new Error(`CoinGecko ${marketRes.ok ? ohlcvRes.status : marketRes.status} for ${ticker}: ${(await (marketRes.ok ? ohlcvRes : marketRes).text()).slice(0, 200)}`)
+  }
+
   const [market, ohlcvRaw] = await Promise.all([marketRes.json(), ohlcvRes.json()])
+
+  if (!Array.isArray(ohlcvRaw)) {
+    throw new Error(`CoinGecko returned unexpected OHLCV payload for ${ticker}: ${JSON.stringify(ohlcvRaw).slice(0, 200)}`)
+  }
 
   const ohlcv: OHLCV[] = (ohlcvRaw as number[][]).map(([t, o, h, l, c]) => ({
     timestamp: t, open: o, high: h, low: l, close: c, volume: 0,
@@ -179,9 +196,17 @@ export async function fetchAllMarketData(): Promise<MarketSnapshot[]> {
   const stockPromises = TRACKED_ASSETS.stocks.map(t =>
     fetchStockSnapshot(t).catch(e => { console.error(`Stock fetch failed: ${t}`, e); return null })
   )
-  const cryptoPromises = TRACKED_ASSETS.crypto.map(t =>
-    fetchCryptoSnapshot(t).catch(e => { console.error(`Crypto fetch failed: ${t}`, e); return null })
-  )
-  const results = await Promise.all([...stockPromises, ...cryptoPromises])
+
+  // CoinGecko's free tier throttles bursts — fetch crypto sequentially with a
+  // pause between coins instead of firing all requests at once.
+  const cryptoResults: (MarketSnapshot | null)[] = []
+  for (const t of TRACKED_ASSETS.crypto) {
+    cryptoResults.push(
+      await fetchCryptoSnapshot(t).catch(e => { console.error(`Crypto fetch failed: ${t}`, e); return null })
+    )
+    await new Promise(r => setTimeout(r, 1500))
+  }
+
+  const results = [...(await Promise.all(stockPromises)), ...cryptoResults]
   return results.filter(Boolean) as MarketSnapshot[]
 }

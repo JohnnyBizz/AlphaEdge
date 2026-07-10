@@ -3,6 +3,10 @@ import { createSupabaseContext } from '@/lib/supabase/context'
 import { fetchAllMarketData } from '@/lib/market-data'
 import { generateAndCacheAllSignals, getTraderProfile } from '@/lib/signal-engine'
 
+// Full signal generation (market data + AI analysis for ~13 assets) takes
+// ~1 minute — ask Vercel for more than the default function duration.
+export const maxDuration = 300
+
 // Vercel cron sends `Authorization: Bearer ${CRON_SECRET}` when the
 // CRON_SECRET env var is set on the project.
 function isCronRequest(req: NextRequest) {

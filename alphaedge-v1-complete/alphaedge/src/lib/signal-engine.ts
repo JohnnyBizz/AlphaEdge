@@ -126,8 +126,11 @@ ${snapshot.ohlcv.slice(-5).map(c =>
 ).join('\n')}`
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-5',
     max_tokens: 600,
+    // Small structured-JSON task on a tight token budget — no extended
+    // thinking (Sonnet 5 runs adaptive thinking by default when omitted).
+    thinking: { type: 'disabled' },
     system: BASE_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: prompt }],
   })
