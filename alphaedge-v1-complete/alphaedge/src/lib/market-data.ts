@@ -86,25 +86,24 @@ export async function fetchStockSnapshot(ticker: string): Promise<MarketSnapshot
   const to = new Date().toISOString().split('T')[0]
   const from = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-  const [aggRes, snapshotRes] = await Promise.all([
-    fetch(`${POLYGON_BASE}/v2/aggs/ticker/${ticker}/range/1/day/${from}/${to}?adjusted=true&sort=asc&limit=60&apiKey=${apiKey}`),
-    fetch(`${POLYGON_BASE}/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}?apiKey=${apiKey}`),
-  ])
+  // Single request per ticker: the daily aggregates contain everything the
+  // analysis needs. (Polygon's free tier allows only 5 requests/minute, so
+  // the previous extra intraday-snapshot call per ticker blew the budget.)
+  const aggRes = await fetch(
+    `${POLYGON_BASE}/v2/aggs/ticker/${ticker}/range/1/day/${from}/${to}?adjusted=true&sort=asc&limit=60&apiKey=${apiKey}`
+  )
 
-  if (!aggRes.ok || !snapshotRes.ok) {
-    throw new Error(`Polygon ${aggRes.ok ? snapshotRes.status : aggRes.status} for ${ticker}: ${(await (aggRes.ok ? snapshotRes : aggRes).text()).slice(0, 200)}`)
+  if (!aggRes.ok) {
+    throw new Error(`Polygon ${aggRes.status} for ${ticker}: ${(await aggRes.text()).slice(0, 200)}`)
   }
 
-  const [aggData, snapshotData] = await Promise.all([aggRes.json(), snapshotRes.json()])
+  const aggData = await aggRes.json()
 
-  if (!Array.isArray(aggData.results) || aggData.results.length === 0) {
+  if (!Array.isArray(aggData.results) || aggData.results.length < 2) {
     throw new Error(`Polygon returned no OHLCV data for ${ticker}: ${JSON.stringify(aggData).slice(0, 200)}`)
   }
 
-  const results: any[] = aggData.results ?? []
-  const snap = snapshotData.ticker ?? {}
-
-  const ohlcv: OHLCV[] = results.map((r: any) => ({
+  const ohlcv: OHLCV[] = aggData.results.map((r: any) => ({
     timestamp: r.t, open: r.o, high: r.h, low: r.l, close: r.c, volume: r.v,
   }))
 
@@ -112,8 +111,9 @@ export async function fetchStockSnapshot(ticker: string): Promise<MarketSnapshot
   const volumes = ohlcv.map(c => c.volume)
   const avgVolume = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20
 
-  const currentPrice = snap.day?.c ?? closes[closes.length - 1]
-  const prevClose = snap.prevDay?.c ?? closes[closes.length - 2]
+  const last = ohlcv[ohlcv.length - 1]
+  const currentPrice = last.close
+  const prevClose = closes[closes.length - 2]
   const priceChange = currentPrice - prevClose
 
   return {
@@ -122,13 +122,13 @@ export async function fetchStockSnapshot(ticker: string): Promise<MarketSnapshot
     currentPrice,
     priceChange24h: parseFloat(priceChange.toFixed(2)),
     percentChange24h: parseFloat(((priceChange / prevClose) * 100).toFixed(2)),
-    volume24h: snap.day?.v ?? 0,
+    volume24h: last.volume,
     volumeAvg20d: parseFloat(avgVolume.toFixed(0)),
     ohlcv,
     rsi: calcRSI(closes),
     macd: calcMACD(closes),
     bollingerBands: calcBollingerBands(closes),
-    vwap: snap.day?.vw ?? null,
+    vwap: null,
   }
 }
 
@@ -192,21 +192,28 @@ export const TRACKED_ASSETS = {
   crypto: ['BTC', 'ETH', 'SOL', 'BNB', 'AVAX'],
 }
 
-export async function fetchAllMarketData(): Promise<MarketSnapshot[]> {
-  const stockPromises = TRACKED_ASSETS.stocks.map(t =>
-    fetchStockSnapshot(t).catch(e => { console.error(`Stock fetch failed: ${t}`, e); return null })
-  )
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
-  // CoinGecko's free tier throttles bursts — fetch crypto sequentially with a
-  // pause between coins instead of firing all requests at once.
-  const cryptoResults: (MarketSnapshot | null)[] = []
-  for (const t of TRACKED_ASSETS.crypto) {
-    cryptoResults.push(
-      await fetchCryptoSnapshot(t).catch(e => { console.error(`Crypto fetch failed: ${t}`, e); return null })
+export async function fetchAllMarketData(): Promise<MarketSnapshot[]> {
+  // Both providers' free tiers are strict about requests-per-minute, so all
+  // fetching is sequential and paced. Polygon free = 5 req/min → 13s between
+  // stock requests. Slow, but results are cached for an hour after each run.
+  const results: (MarketSnapshot | null)[] = []
+
+  for (let i = 0; i < TRACKED_ASSETS.stocks.length; i++) {
+    const t = TRACKED_ASSETS.stocks[i]
+    results.push(
+      await fetchStockSnapshot(t).catch(e => { console.error(`Stock fetch failed: ${t}`, e); return null })
     )
-    await new Promise(r => setTimeout(r, 1500))
+    if (i < TRACKED_ASSETS.stocks.length - 1) await sleep(13000)
   }
 
-  const results = [...(await Promise.all(stockPromises)), ...cryptoResults]
+  for (const t of TRACKED_ASSETS.crypto) {
+    results.push(
+      await fetchCryptoSnapshot(t).catch(e => { console.error(`Crypto fetch failed: ${t}`, e); return null })
+    )
+    await sleep(3000)
+  }
+
   return results.filter(Boolean) as MarketSnapshot[]
 }
