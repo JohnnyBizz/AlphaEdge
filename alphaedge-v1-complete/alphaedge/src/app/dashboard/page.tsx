@@ -18,6 +18,11 @@ type Signal = {
 
 type Filter = 'all' | 'stock' | 'crypto' | 'buy' | 'sell'
 
+type Position = {
+  id: string; ticker: string; market: 'stock' | 'crypto'
+  quantity: number; entry_price: number; created_at: string
+}
+
 function formatPrice(p: number) {
   if (p >= 1000) return `$${p.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
   if (p >= 1) return `$${p.toFixed(2)}`
@@ -35,6 +40,175 @@ function SignalBadge({ type }: { type: 'buy' | 'sell' | 'watch' }) {
     <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{ background: s.bg, color: s.color }}>
       {s.label}
     </span>
+  )
+}
+
+function PositionsSection({ signals }: { signals: Signal[] }) {
+  const [positions, setPositions] = useState<Position[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [ticker, setTicker] = useState('')
+  const [qty, setQty] = useState('')
+  const [entry, setEntry] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/positions')
+      .then(r => r.json())
+      .then(d => { setPositions(d.positions ?? []); setLoaded(true) })
+      .catch(() => setLoaded(true))
+  }, [])
+
+  const bySignal = new Map(signals.map(s => [s.ticker, s]))
+  const assetOptions = signals
+    .map(s => ({ ticker: s.ticker, market: s.market }))
+    .sort((a, b) => a.ticker.localeCompare(b.ticker))
+
+  async function addPosition(e: React.FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+    const asset = assetOptions.find(a => a.ticker === ticker)
+    if (!asset) { setFormError('Pick an asset'); return }
+    setSaving(true)
+    const res = await fetch('/api/positions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticker: asset.ticker, market: asset.market, quantity: qty, entry_price: entry }),
+    })
+    const d = await res.json()
+    setSaving(false)
+    if (!res.ok) { setFormError(d.error ?? 'Could not save position'); return }
+    setPositions(p => [...p, d.position])
+    setTicker(''); setQty(''); setEntry(''); setShowForm(false)
+  }
+
+  async function removePosition(id: string) {
+    setPositions(p => p.filter(x => x.id !== id))
+    await fetch(`/api/positions?id=${id}`, { method: 'DELETE' }).catch(() => {})
+  }
+
+  if (!loaded) return null
+
+  const totals = positions.reduce((acc, p) => {
+    const sig = bySignal.get(p.ticker)
+    if (!sig) return acc
+    acc.cost += p.quantity * p.entry_price
+    acc.value += p.quantity * sig.price
+    return acc
+  }, { cost: 0, value: 0 })
+  const totalPl = totals.value - totals.cost
+  const totalPlPct = totals.cost > 0 ? (totalPl / totals.cost) * 100 : 0
+  const plColor = (v: number) => v >= 0 ? 'var(--accent)' : 'var(--red)'
+
+  return (
+    <div className="mb-6 rounded-xl p-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>My Positions</h2>
+          {positions.length > 0 && totals.cost > 0 && (
+            <span className="text-xs font-semibold" style={{ color: plColor(totalPl) }}>
+              {totalPl >= 0 ? '+' : ''}{formatPrice(Math.abs(totalPl)).replace('$', '$')}{' '}
+              ({totalPl >= 0 ? '+' : ''}{totalPlPct.toFixed(1)}%)
+            </span>
+          )}
+        </div>
+        <button onClick={() => setShowForm(f => !f)}
+          className="px-3 py-1.5 rounded-lg text-xs"
+          style={{ background: 'var(--accent-dim)', border: 'none', color: 'var(--accent)', cursor: 'pointer' }}>
+          {showForm ? 'Close' : '+ Add position'}
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={addPosition} className="flex flex-wrap items-end gap-2 mb-4 p-3 rounded-lg"
+          style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+          <div>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Asset</label>
+            <select value={ticker} onChange={e => setTicker(e.target.value)} required
+              className="px-2 py-2 rounded-lg text-xs outline-none"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+              <option value="">Select…</option>
+              {assetOptions.map(a => (
+                <option key={a.ticker} value={a.ticker}>{a.ticker} ({a.market})</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Quantity</label>
+            <input type="number" step="any" min="0" value={qty} onChange={e => setQty(e.target.value)}
+              placeholder="e.g. 10" required
+              className="w-28 px-2 py-2 rounded-lg text-xs outline-none"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+          </div>
+          <div>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Entry price ($)</label>
+            <input type="number" step="any" min="0" value={entry} onChange={e => setEntry(e.target.value)}
+              placeholder="e.g. 180.50" required
+              className="w-28 px-2 py-2 rounded-lg text-xs outline-none"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+          </div>
+          <button type="submit" disabled={saving}
+            className="px-4 py-2 rounded-lg text-xs font-semibold"
+            style={{ background: 'var(--accent)', color: '#0a0d12', border: 'none', cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Saving…' : 'Add'}
+          </button>
+          {formError && <span className="text-xs" style={{ color: 'var(--red)' }}>{formError}</span>}
+        </form>
+      )}
+
+      {positions.length === 0 ? (
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Track what you own — add a position and see its live value and current analysis alongside the market board.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {positions.map(p => {
+            const sig = bySignal.get(p.ticker)
+            const current = sig?.price ?? null
+            const pl = current !== null ? (current - p.entry_price) * p.quantity : null
+            const plPct = current !== null ? ((current / p.entry_price) - 1) * 100 : null
+            return (
+              <div key={p.id} className="flex items-center gap-3 flex-wrap p-3 rounded-lg"
+                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+                <div className="w-16 font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{p.ticker}</div>
+                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {p.quantity} @ {formatPrice(p.entry_price)}
+                </div>
+                {current !== null && pl !== null && plPct !== null ? (
+                  <>
+                    <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      now {formatPrice(current)}
+                    </div>
+                    <div className="text-xs font-semibold" style={{ color: plColor(pl) }}>
+                      {pl >= 0 ? '+' : '-'}{formatPrice(Math.abs(pl)).replace('$', '$')} ({plPct >= 0 ? '+' : ''}{plPct.toFixed(1)}%)
+                    </div>
+                    {sig && (
+                      <div className="flex items-center gap-2 ml-auto">
+                        <SignalBadge type={sig.signal_type} />
+                        <span className="text-xs hidden md:inline" style={{ color: 'var(--text-muted)' }}>
+                          RSI {sig.rsi ?? '—'}{sig.macd_signal ? ` · MACD ${sig.macd_signal.replace(/_/g, ' ')}` : ''}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-xs ml-auto" style={{ color: 'var(--text-muted)' }}>awaiting analysis refresh</span>
+                )}
+                <button onClick={() => removePosition(p.id)} title="Remove position"
+                  className="text-xs px-2 py-1 rounded"
+                  style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  ✕
+                </button>
+              </div>
+            )
+          })}
+          <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+            Position values update with each hourly analysis refresh. Informational only — not financial advice.
+          </p>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -201,6 +375,9 @@ export default function DashboardPage() {
             sub={`${buys} bullish vs ${sells} bearish`}
             color={bullish ? 'var(--accent)' : 'var(--red)'} />
         </div>
+
+        {/* My Positions */}
+        <PositionsSection signals={signals} />
 
         {/* Filter pills */}
         <div className="flex gap-2 mb-5 flex-wrap">
