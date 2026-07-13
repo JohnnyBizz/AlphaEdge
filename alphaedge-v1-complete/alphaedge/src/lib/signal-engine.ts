@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { MarketSnapshot } from './market-data'
 import { createAdminClient } from './supabase/admin'
+import { sendSignalChangeAlerts } from './alerts'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -174,6 +175,16 @@ export async function generateAndCacheAllSignals(
     if (i + 4 < snapshots.length) await new Promise(r => setTimeout(r, 1000))
   }
 
+  // Snapshot the outgoing signals before replacing them, so we can detect
+  // per-ticker signal changes and email affected position holders.
+  const { data: prevRows } = await supabase
+    .from('signals')
+    .select('ticker, signal_type')
+    .gt('expires_at', new Date().toISOString())
+  const previousByTicker = new Map<string, string>(
+    (prevRows ?? []).map(r => [r.ticker as string, r.signal_type as string])
+  )
+
   await supabase.from('signals').delete().lt('expires_at', new Date().toISOString())
 
   // Replace any still-fresh rows for the tickers we're about to insert, so
@@ -193,6 +204,12 @@ export async function generateAndCacheAllSignals(
   )
 
   if (error) console.error('Failed to cache signals:', error)
+
+  try {
+    await sendSignalChangeAlerts(previousByTicker, results)
+  } catch (err) {
+    console.error('Signal-change alerts failed:', err)
+  }
   return results
 }
 
