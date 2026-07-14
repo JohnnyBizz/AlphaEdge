@@ -27,6 +27,8 @@ export interface GeneratedSignal {
   macd_signal: string | null
   volume_ratio: number | null
   ai_reasoning: string
+  simple_reasoning: string
+  chart_closes: { t: number; c: number }[]
 }
 
 // ── Trader profile → prompt description ──────────────────
@@ -79,7 +81,8 @@ For each asset, return a JSON object with this exact structure:
   "target_price": <number or null>,
   "stop_loss": <number or null>,
   "macd_signal": "bullish_crossover" | "bearish_crossover" | "bullish" | "bearish" | "neutral",
-  "ai_reasoning": "<2-3 sentence analysis explaining what the indicators suggest and what to watch for>"
+  "ai_reasoning": "<2-3 sentence analysis explaining what the indicators suggest and what to watch for>",
+  "simple_summary": "<2 short sentences in plain everyday English for someone with zero trading knowledge. No jargon — never use terms like RSI, MACD, SMA, Bollinger, VWAP, histogram, or crossover. Explain what the price is doing and what the stance means in words like: the price has been climbing/falling/moving sideways, it looks expensive/cheap right now, it may be worth waiting for a dip, momentum is building/fading.>"
 }
 
 Signal generation guidelines:
@@ -128,7 +131,7 @@ ${snapshot.ohlcv.slice(-5).map(c =>
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-5',
-    max_tokens: 600,
+    max_tokens: 800,
     // Small structured-JSON task on a tight token budget — no extended
     // thinking (Sonnet 5 runs adaptive thinking by default when omitted).
     thinking: { type: 'disabled' },
@@ -153,6 +156,9 @@ ${snapshot.ohlcv.slice(-5).map(c =>
     macd_signal: parsed.macd_signal ?? null,
     volume_ratio: volumeRatio,
     ai_reasoning: parsed.ai_reasoning,
+    simple_reasoning: parsed.simple_summary ?? '',
+    // Compact close series for the expanded-card chart (~30 most recent candles)
+    chart_closes: snapshot.ohlcv.slice(-30).map(c => ({ t: c.timestamp, c: c.close })),
   }
 }
 
