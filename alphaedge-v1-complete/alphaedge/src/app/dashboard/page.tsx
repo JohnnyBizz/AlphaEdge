@@ -252,7 +252,9 @@ export default function DashboardPage() {
     setError(null)
     try {
       const res = await fetch('/api/signals')
-      if (res.status === 401 || res.status === 403) { router.push('/auth'); return }
+      if (res.status === 401) { router.push('/auth'); return }
+      // Signed in but no active subscription — send them to finish checkout
+      if (res.status === 403) { router.push('/subscribe'); return }
       if (!res.ok) throw new Error('Failed to fetch analysis')
       const data = await res.json()
       setSignals(data.signals ?? [])
