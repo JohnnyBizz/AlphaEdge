@@ -44,7 +44,7 @@ function assetCard(sig: GeneratedSignal, prevType: string, positions: PositionRo
       <span style="margin-left:8px;font-size:12px;color:#6b7280;">was ${was.text}</span>
     </div>
     ${posLines}
-    ${sig.ai_reasoning ? `<div style="font-size:13px;color:#4b5563;margin-top:10px;border-left:3px solid #e5e7eb;padding-left:10px;">${sig.ai_reasoning}</div>` : ''}
+    ${(sig.simple_reasoning || sig.ai_reasoning) ? `<div style="font-size:13px;color:#4b5563;margin-top:10px;border-left:3px solid #e5e7eb;padding-left:10px;">${sig.simple_reasoning || sig.ai_reasoning}</div>` : ''}
   </div>`
 }
 

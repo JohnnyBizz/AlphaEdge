@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import SignalChart from '@/components/SignalChart'
 import {
   TrendingUp, RefreshCw, LogOut, BarChart2, Bitcoin, Building2, Eye, Settings, CreditCard,
 } from 'lucide-react'
@@ -14,6 +15,8 @@ type Signal = {
   entry_low: number | null; entry_high: number | null; target_price: number | null
   stop_loss: number | null; rsi: number | null; macd_signal: string | null
   volume_ratio: number | null; ai_reasoning: string; generated_at: string
+  simple_reasoning: string | null
+  chart_closes: { t: number; c: number }[] | null
 }
 
 type Filter = 'all' | 'stock' | 'crypto' | 'buy' | 'sell'
@@ -479,8 +482,41 @@ export default function DashboardPage() {
 
                 {selectedSignal?.id === signal.id && (
                   <div className="mt-4 pt-4 fade-in" style={{ borderTop: '1px solid var(--border)' }}>
-                    <div className="text-xs leading-relaxed mb-4" style={{ color: 'var(--text-secondary)' }}>
-                      {signal.ai_reasoning}
+                    {signal.simple_reasoning && (
+                      <div className="mb-4">
+                        <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                          What this means
+                        </div>
+                        <div className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                          {signal.simple_reasoning}
+                        </div>
+                      </div>
+                    )}
+
+                    {signal.chart_closes && signal.chart_closes.length >= 5 && (
+                      <div className="mb-4">
+                        <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                          Recent price vs the key levels
+                        </div>
+                        <SignalChart
+                          closes={signal.chart_closes}
+                          entryLow={signal.entry_low}
+                          entryHigh={signal.entry_high}
+                          target={signal.target_price}
+                          stop={signal.stop_loss}
+                        />
+                      </div>
+                    )}
+
+                    <div className="mb-4">
+                      {signal.simple_reasoning && (
+                        <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                          Technical detail
+                        </div>
+                      )}
+                      <div className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                        {signal.ai_reasoning}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-xs">
