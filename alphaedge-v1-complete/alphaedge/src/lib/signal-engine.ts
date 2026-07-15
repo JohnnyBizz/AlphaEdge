@@ -226,7 +226,10 @@ export async function generateAndCacheAllSignals(
     results.map(s => ({
       ...s,
       generated_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      // Kept fresh for 2.5h so cached signals never lapse between the
+      // 2-hourly cron refreshes (the 0.5h buffer absorbs cron timing jitter
+      // or a single slow run, avoiding an expensive on-demand regeneration).
+      expires_at: new Date(Date.now() + 150 * 60 * 1000).toISOString(),
     }))
   )
 
