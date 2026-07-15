@@ -21,7 +21,9 @@ function compactPrice(v: number) {
   if (v >= 10000) return `$${(v / 1000).toFixed(v >= 100000 ? 0 : 1)}k`
   if (v >= 1000) return `$${Math.round(v).toLocaleString('en-US')}`
   if (v >= 1) return `$${v.toFixed(2)}`
-  return `$${v.toFixed(4)}`
+  if (v >= 0.01) return `$${v.toFixed(4)}`
+  // Sub-cent coins (SHIB, etc.) need significant digits, not fixed decimals
+  return v > 0 ? `$${v.toPrecision(3)}` : '$0'
 }
 
 // Axis ticks read better without cents on triple-digit prices

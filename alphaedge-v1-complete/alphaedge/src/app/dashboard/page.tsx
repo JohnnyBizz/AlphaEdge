@@ -30,7 +30,9 @@ type Position = {
 function formatPrice(p: number) {
   if (p >= 1000) return `$${p.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
   if (p >= 1) return `$${p.toFixed(2)}`
-  return `$${p.toFixed(4)}`
+  if (p >= 0.01) return `$${p.toFixed(4)}`
+  // Sub-cent coins (SHIB, etc.) need significant digits, not fixed decimals
+  return p > 0 ? `$${p.toPrecision(3)}` : '$0'
 }
 
 function SignalBadge({ type }: { type: 'buy' | 'sell' | 'watch' }) {
