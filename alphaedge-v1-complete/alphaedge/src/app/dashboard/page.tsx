@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import SignalChart from '@/components/SignalChart'
+import { ASSET_NAMES, GLOBAL_STOCK_TICKERS } from '@/lib/assets'
 import {
   TrendingUp, RefreshCw, LogOut, BarChart2, Bitcoin, Building2, Eye, Settings, CreditCard,
 } from 'lucide-react'
@@ -19,7 +20,7 @@ type Signal = {
   chart_closes: { t: number; c: number }[] | null
 }
 
-type Filter = 'all' | 'stock' | 'crypto' | 'buy' | 'sell'
+type Filter = 'all' | 'stock' | 'global' | 'crypto' | 'buy' | 'sell'
 
 type Position = {
   id: string; ticker: string; market: 'stock' | 'crypto'
@@ -303,7 +304,9 @@ export default function DashboardPage() {
 
   const filtered = signals.filter(s => {
     if (filter === 'all') return true
-    if (filter === 'stock' || filter === 'crypto') return s.market === filter
+    if (filter === 'stock') return s.market === 'stock' && !GLOBAL_STOCK_TICKERS.has(s.ticker)
+    if (filter === 'global') return GLOBAL_STOCK_TICKERS.has(s.ticker)
+    if (filter === 'crypto') return s.market === 'crypto'
     return s.signal_type === filter
   })
 
@@ -367,7 +370,7 @@ export default function DashboardPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Market Analysis</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            AI technical analysis across stocks and crypto — for educational purposes
+            AI technical analysis across US stocks, global markets, and crypto — for educational purposes
           </p>
         </div>
 
@@ -390,7 +393,8 @@ export default function DashboardPage() {
             { key: 'all', label: 'All' },
             { key: 'buy', label: 'Bullish' },
             { key: 'sell', label: 'Bearish' },
-            { key: 'stock', label: 'Stocks' },
+            { key: 'stock', label: 'US Stocks' },
+            { key: 'global', label: 'Global' },
             { key: 'crypto', label: 'Crypto' },
           ] as const).map(f => (
             <button key={f.key} onClick={() => setFilter(f.key)}
@@ -445,7 +449,7 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {signal.market === 'crypto' ? 'Cryptocurrency' : 'Stock'}
+                      {ASSET_NAMES[signal.ticker] ?? (signal.market === 'crypto' ? 'Cryptocurrency' : 'Stock')}
                     </div>
                   </div>
                   <SignalBadge type={signal.signal_type} />
