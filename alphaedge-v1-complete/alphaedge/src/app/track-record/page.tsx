@@ -106,7 +106,7 @@ export default function TrackRecordPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{r.ticker}</span>
                       <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {ASSET_NAMES[r.ticker] ?? (r.market === 'crypto' ? 'Crypto' : 'Stock')}
+                        {ASSET_NAMES[r.ticker] ?? 'Crypto'}
                       </span>
                       {was && (
                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>

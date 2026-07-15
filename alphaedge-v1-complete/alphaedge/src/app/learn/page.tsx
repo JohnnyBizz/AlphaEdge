@@ -4,7 +4,7 @@ import { GLOSSARY } from '@/lib/glossary'
 
 export const metadata = {
   title: 'Learn the Basics — AlphaEdge',
-  description: 'Stocks, crypto, and technical analysis explained in plain English — no jargon, no hype.',
+  description: 'Crypto and technical analysis explained in plain English — no jargon, no hype.',
 }
 
 // Public education hub: short plain-English lessons for people who have
@@ -12,17 +12,17 @@ export const metadata = {
 
 const LESSONS: { title: string; body: string[] }[] = [
   {
-    title: 'What is a stock, really?',
+    title: 'What is cryptocurrency, really?',
     body: [
-      'A stock is a small piece of ownership in a company. When you buy a share of Apple, you own a tiny slice of Apple — its stores, its products, its profits.',
-      'Prices move because millions of people are constantly deciding what that slice is worth. Good news makes more people want in (price rises); bad news makes people want out (price falls). Nobody controls it — it is a giant, ongoing negotiation.',
+      'A cryptocurrency like Bitcoin or Ethereum is a digital asset that lives on a shared, public network instead of being issued by a company or government. There are no shares, no head office, no quarterly profits — just an asset that people buy and sell around the clock, all over the world.',
+      'Its price moves because millions of people are constantly deciding what it is worth. More buyers than sellers pushes the price up; more sellers than buyers pushes it down. Nobody controls it — it is a giant, ongoing, 24/7 negotiation.',
     ],
   },
   {
-    title: 'And what is crypto?',
+    title: 'Why is crypto so much more volatile?',
     body: [
-      'Cryptocurrencies like Bitcoin are digital assets that live on shared public networks instead of being issued by a company or government. Their prices are set the same way stocks are — by what buyers and sellers agree on — but with no earnings or products behind them, sentiment plays an even bigger role.',
-      'That is why crypto moves so much faster and harder in both directions. The same tools used to read stock charts work on crypto charts, which is why AlphaEdge analyzes both the same way.',
+      'Because there are no earnings or products underneath it, a coin is worth exactly what the crowd feels it is worth at that moment — so sentiment moves it far more than it moves a company stock. That is why crypto can swing double digits in a day.',
+      'The upside: those bigger swings are exactly what technical analysis is built to read, and crypto trades 24/7 with no market close — so the tools work every hour of every day, weekends included.',
     ],
   },
   {
@@ -106,7 +106,7 @@ export default function LearnPage() {
             <BookOpen size={22} style={{ color: 'var(--accent)' }} /> Learn the basics
           </h1>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Ten short lessons that explain stocks, crypto, and chart-reading the way we wish someone
+            Ten short lessons that explain crypto and chart-reading the way we wish someone
             had explained them to us — in plain English, no hype. Five minutes here and the dashboard
             will make a lot more sense.
           </p>

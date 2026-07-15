@@ -1,9 +1,8 @@
 // ── Market Data Fetcher ───────────────────────────────────
-// Polygon.io (stocks) + CoinGecko (crypto) + computed indicators
+// CoinGecko (crypto) + computed indicators. AlphaEdge is crypto-only.
 
-import { STOCK_ASSETS, CRYPTO_ASSETS } from './assets'
+import { CRYPTO_ASSETS } from './assets'
 
-const POLYGON_BASE = 'https://api.polygon.io'
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 
 export interface OHLCV {
@@ -83,59 +82,6 @@ function calcBollingerBands(closes: number[], period = 20) {
   }
 }
 
-// ── Stocks (Polygon.io) ───────────────────────────────────
-
-export async function fetchStockSnapshot(ticker: string): Promise<MarketSnapshot> {
-  const apiKey = process.env.POLYGON_API_KEY!
-  const to = new Date().toISOString().split('T')[0]
-  const from = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-
-  // Single request per ticker: the daily aggregates contain everything the
-  // analysis needs. (Polygon's free tier allows only 5 requests/minute, so
-  // the previous extra intraday-snapshot call per ticker blew the budget.)
-  const aggRes = await fetch(
-    `${POLYGON_BASE}/v2/aggs/ticker/${ticker}/range/1/day/${from}/${to}?adjusted=true&sort=asc&limit=60&apiKey=${apiKey}`
-  )
-
-  if (!aggRes.ok) {
-    throw new Error(`Polygon ${aggRes.status} for ${ticker}: ${(await aggRes.text()).slice(0, 200)}`)
-  }
-
-  const aggData = await aggRes.json()
-
-  if (!Array.isArray(aggData.results) || aggData.results.length < 2) {
-    throw new Error(`Polygon returned no OHLCV data for ${ticker}: ${JSON.stringify(aggData).slice(0, 200)}`)
-  }
-
-  const ohlcv: OHLCV[] = aggData.results.map((r: any) => ({
-    timestamp: r.t, open: r.o, high: r.h, low: r.l, close: r.c, volume: r.v,
-  }))
-
-  const closes = ohlcv.map(c => c.close)
-  const volumes = ohlcv.map(c => c.volume)
-  const avgVolume = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20
-
-  const last = ohlcv[ohlcv.length - 1]
-  const currentPrice = last.close
-  const prevClose = closes[closes.length - 2]
-  const priceChange = currentPrice - prevClose
-
-  return {
-    ticker,
-    market: 'stock',
-    currentPrice,
-    priceChange24h: parseFloat(priceChange.toFixed(2)),
-    percentChange24h: parseFloat(((priceChange / prevClose) * 100).toFixed(2)),
-    volume24h: last.volume,
-    volumeAvg20d: parseFloat(avgVolume.toFixed(0)),
-    ohlcv,
-    rsi: calcRSI(closes),
-    macd: calcMACD(closes),
-    bollingerBands: calcBollingerBands(closes),
-    vwap: null,
-  }
-}
-
 // ── Crypto (CoinGecko) ────────────────────────────────────
 
 const COINGECKO_IDS: Record<string, string> = Object.fromEntries(
@@ -193,22 +139,20 @@ export async function fetchCryptoSnapshot(ticker: string): Promise<MarketSnapsho
 
 // ── Batch fetch all tracked assets ────────────────────────
 
+// `stocks` kept as an empty list so callers importing TRACKED_ASSETS.stocks
+// (e.g. position validation) keep working; AlphaEdge tracks crypto only.
 export const TRACKED_ASSETS = {
-  stocks: STOCK_ASSETS.map(a => a.ticker),
+  stocks: [] as string[],
   crypto: CRYPTO_ASSETS.map(a => a.ticker),
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 export async function fetchAllMarketData(): Promise<MarketSnapshot[]> {
-  // Polygon Starter plan has no request-per-minute cap — fetch all stocks in
-  // parallel. CoinGecko's demo tier (30 req/min) still needs pacing: each
-  // coin is 2 parallel requests, so 4.5s between coins keeps the sustained
-  // rate under ~27 req/min even across the full 18-coin list.
-  const stockPromises = TRACKED_ASSETS.stocks.map(t =>
-    fetchStockSnapshot(t).catch(e => { console.error(`Stock fetch failed: ${t}`, e); return null })
-  )
-
+  // CoinGecko's demo tier (30 req/min) needs pacing: each coin is 2 parallel
+  // requests, so 4.5s between coins keeps the sustained rate under ~27
+  // req/min. On the commercial Analyst plan (500 req/min) this loop can be
+  // parallelized for a much faster refresh.
   const cryptoResults: (MarketSnapshot | null)[] = []
   for (const t of TRACKED_ASSETS.crypto) {
     cryptoResults.push(
@@ -217,6 +161,5 @@ export async function fetchAllMarketData(): Promise<MarketSnapshot[]> {
     await sleep(4500)
   }
 
-  const results = [...(await Promise.all(stockPromises)), ...cryptoResults]
-  return results.filter(Boolean) as MarketSnapshot[]
+  return cryptoResults.filter(Boolean) as MarketSnapshot[]
 }

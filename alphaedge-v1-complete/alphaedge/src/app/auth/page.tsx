@@ -106,7 +106,7 @@ export default function AuthPage() {
             <span style={{ color: 'var(--accent)' }}>decoded.</span>
           </div>
           <p className="text-base mb-10" style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-            Educational AI analysis of stocks and crypto. Technical indicators, trend data, and clear
+            Educational AI analysis of the top cryptocurrencies. Technical indicators, trend data, and clear
             explanations — all in one dashboard.
           </p>
 
