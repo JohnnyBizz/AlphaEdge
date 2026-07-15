@@ -28,18 +28,34 @@ export default function TermsPage() {
           information about the nature of our content.
         </p>
 
-        <h2 style={{ color: '#e8eaf0', fontSize: 17, marginTop: 32 }}>3. Subscriptions and Billing</h2>
+        <h2 style={{ color: '#e8eaf0', fontSize: 17, marginTop: 32 }}>3. Subscriptions, Billing, and Refunds</h2>
         <p>
-          Access to the Service requires a paid subscription billed on a weekly or monthly basis through
-          our payment processor, Stripe. Subscriptions renew automatically until canceled. You may cancel
-          at any time through your account settings or the Stripe billing portal; cancellation takes
-          effect at the end of the current billing period. Except where required by law, payments are
-          non-refundable.
+          Access to the Service requires a paid subscription, billed in advance on a weekly or monthly
+          basis (per the plan you choose) through our payment processor, Stripe. Subscriptions renew
+          automatically at the end of each billing period until canceled.
         </p>
         <p>
-          If a free trial is offered, you will be charged automatically when the trial ends unless you
-          cancel before the trial period expires. We reserve the right to change subscription pricing
-          with reasonable advance notice; price changes apply to subsequent billing periods.
+          <strong style={{ color: '#c0c8d8' }}>Free trial.</strong> New subscriptions include a 7-day
+          free trial. You will not be charged during the trial, and you may cancel at any time before it
+          ends to avoid being charged. If you do not cancel before the trial ends, your paid subscription
+          begins automatically and your payment method is charged for the first billing period.
+        </p>
+        <p>
+          <strong style={{ color: '#c0c8d8' }}>Cancellation.</strong> You may cancel at any time from the
+          billing portal in your dashboard or through Stripe. Cancellation stops all future charges and
+          takes effect at the end of your current billing period; you retain access until then.
+        </p>
+        <p>
+          <strong style={{ color: '#c0c8d8' }}>Refunds.</strong> Except where a refund is required by
+          applicable law (including certain consumer-protection rights in the EU, UK, and elsewhere),
+          subscription fees are non-refundable, including for partial billing periods after a payment has
+          been taken. If you believe you were charged in error, contact us at{' '}
+          <a href="mailto:support@alphaedge.network" style={{ color: '#00e5a0' }}>support@alphaedge.network</a>{' '}
+          and we will review your request in good faith.
+        </p>
+        <p>
+          We may change subscription pricing with reasonable advance notice; price changes apply only to
+          subsequent billing periods.
         </p>
 
         <h2 style={{ color: '#e8eaf0', fontSize: 17, marginTop: 32 }}>4. Accounts</h2>
