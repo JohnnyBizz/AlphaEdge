@@ -1,6 +1,8 @@
 // ── Market Data Fetcher ───────────────────────────────────
 // Polygon.io (stocks) + CoinGecko (crypto) + computed indicators
 
+import { STOCK_ASSETS, CRYPTO_ASSETS } from './assets'
+
 const POLYGON_BASE = 'https://api.polygon.io'
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 
@@ -134,12 +136,9 @@ export async function fetchStockSnapshot(ticker: string): Promise<MarketSnapshot
 
 // ── Crypto (CoinGecko) ────────────────────────────────────
 
-const COINGECKO_IDS: Record<string, string> = {
-  BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', BNB: 'binancecoin',
-  DOGE: 'dogecoin', ADA: 'cardano', AVAX: 'avalanche-2',
-  LINK: 'chainlink', DOT: 'polkadot', MATIC: 'matic-network',
-  XRP: 'ripple',
-}
+const COINGECKO_IDS: Record<string, string> = Object.fromEntries(
+  CRYPTO_ASSETS.map(a => [a.ticker, a.coingeckoId])
+)
 
 export async function fetchCryptoSnapshot(ticker: string): Promise<MarketSnapshot> {
   const coinId = COINGECKO_IDS[ticker] ?? ticker.toLowerCase()
@@ -192,11 +191,8 @@ export async function fetchCryptoSnapshot(ticker: string): Promise<MarketSnapsho
 // ── Batch fetch all tracked assets ────────────────────────
 
 export const TRACKED_ASSETS = {
-  stocks: [
-    'NVDA', 'AAPL', 'MSFT', 'META', 'GOOGL', 'AMZN', 'TSLA', 'AMD',
-    'NFLX', 'COIN', 'PLTR', 'AVGO', 'JPM', 'SPY',
-  ],
-  crypto: ['BTC', 'ETH', 'SOL', 'BNB', 'AVAX', 'DOGE', 'ADA', 'LINK', 'DOT', 'XRP'],
+  stocks: STOCK_ASSETS.map(a => a.ticker),
+  crypto: CRYPTO_ASSETS.map(a => a.ticker),
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -204,7 +200,8 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 export async function fetchAllMarketData(): Promise<MarketSnapshot[]> {
   // Polygon Starter plan has no request-per-minute cap — fetch all stocks in
   // parallel. CoinGecko's demo tier (30 req/min) still needs pacing: each
-  // coin is 2 requests, so 3s between coins keeps us safely under the limit.
+  // coin is 2 parallel requests, so 4.5s between coins keeps the sustained
+  // rate under ~27 req/min even across the full 18-coin list.
   const stockPromises = TRACKED_ASSETS.stocks.map(t =>
     fetchStockSnapshot(t).catch(e => { console.error(`Stock fetch failed: ${t}`, e); return null })
   )
@@ -214,7 +211,7 @@ export async function fetchAllMarketData(): Promise<MarketSnapshot[]> {
     cryptoResults.push(
       await fetchCryptoSnapshot(t).catch(e => { console.error(`Crypto fetch failed: ${t}`, e); return null })
     )
-    await sleep(3000)
+    await sleep(4500)
   }
 
   const results = [...(await Promise.all(stockPromises)), ...cryptoResults]
