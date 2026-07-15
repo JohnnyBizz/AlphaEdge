@@ -21,7 +21,7 @@ export default function TermsPage() {
         <h2 style={{ color: '#e8eaf0', fontSize: 17, marginTop: 32 }}>2. Description of Service</h2>
         <p>
           AlphaEdge is a subscription-based software platform that provides educational market analysis
-          and technical indicator data for stocks and cryptocurrencies. The Service displays AI-generated
+          and technical indicator data for cryptocurrencies. The Service displays AI-generated
           technical analysis for informational and educational purposes only. We do not execute trades,
           hold customer funds, manage assets, or provide personalized financial advice. See our{' '}
           <Link href="/disclaimer" style={{ color: '#00e5a0' }}>Disclaimer</Link> for important

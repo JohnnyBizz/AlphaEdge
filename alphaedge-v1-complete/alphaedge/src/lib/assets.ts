@@ -2,69 +2,50 @@
 // Single source of truth for every asset AlphaEdge analyzes.
 // Safe to import from client components (no secrets, data only).
 //
-// Global coverage uses US-listed ADRs and region ETFs, so everything
-// here is fetchable through the existing Polygon (stocks) and
-// CoinGecko (crypto) integrations.
-
-export type StockRegion = 'us' | 'global'
-
-export const STOCK_ASSETS: { ticker: string; name: string; region: StockRegion }[] = [
-  // US stocks
-  { ticker: 'NVDA', name: 'NVIDIA', region: 'us' },
-  { ticker: 'AAPL', name: 'Apple', region: 'us' },
-  { ticker: 'MSFT', name: 'Microsoft', region: 'us' },
-  { ticker: 'META', name: 'Meta', region: 'us' },
-  { ticker: 'GOOGL', name: 'Alphabet (Google)', region: 'us' },
-  { ticker: 'AMZN', name: 'Amazon', region: 'us' },
-  { ticker: 'TSLA', name: 'Tesla', region: 'us' },
-  { ticker: 'AMD', name: 'AMD', region: 'us' },
-  { ticker: 'NFLX', name: 'Netflix', region: 'us' },
-  { ticker: 'COIN', name: 'Coinbase', region: 'us' },
-  { ticker: 'PLTR', name: 'Palantir', region: 'us' },
-  { ticker: 'AVGO', name: 'Broadcom', region: 'us' },
-  { ticker: 'JPM', name: 'JPMorgan Chase', region: 'us' },
-  { ticker: 'SPY', name: 'S&P 500 (ETF)', region: 'us' },
-
-  // Global — international companies via their US-listed ADRs
-  { ticker: 'TSM', name: 'Taiwan Semiconductor', region: 'global' },
-  { ticker: 'ASML', name: 'ASML · Netherlands', region: 'global' },
-  { ticker: 'BABA', name: 'Alibaba · China', region: 'global' },
-  { ticker: 'TM', name: 'Toyota · Japan', region: 'global' },
-  { ticker: 'NVO', name: 'Novo Nordisk · Denmark', region: 'global' },
-  { ticker: 'SAP', name: 'SAP · Germany', region: 'global' },
-  { ticker: 'SHEL', name: 'Shell · UK', region: 'global' },
-
-  // Global — whole-region index ETFs
-  { ticker: 'EWJ', name: 'Japan Market (ETF)', region: 'global' },
-  { ticker: 'VGK', name: 'Europe Market (ETF)', region: 'global' },
-  { ticker: 'EEM', name: 'Emerging Markets (ETF)', region: 'global' },
-]
+// AlphaEdge is crypto-only: crypto market data can be commercially
+// licensed cheaply (CoinGecko), whereas equities carry heavy exchange
+// redistribution fees that don't fit a lean subscription product.
 
 export const CRYPTO_ASSETS: { ticker: string; name: string; coingeckoId: string }[] = [
+  // Majors
   { ticker: 'BTC', name: 'Bitcoin', coingeckoId: 'bitcoin' },
   { ticker: 'ETH', name: 'Ethereum', coingeckoId: 'ethereum' },
   { ticker: 'SOL', name: 'Solana', coingeckoId: 'solana' },
   { ticker: 'BNB', name: 'BNB', coingeckoId: 'binancecoin' },
+  { ticker: 'XRP', name: 'XRP', coingeckoId: 'ripple' },
+  { ticker: 'ADA', name: 'Cardano', coingeckoId: 'cardano' },
   { ticker: 'AVAX', name: 'Avalanche', coingeckoId: 'avalanche-2' },
   { ticker: 'DOGE', name: 'Dogecoin', coingeckoId: 'dogecoin' },
-  { ticker: 'ADA', name: 'Cardano', coingeckoId: 'cardano' },
   { ticker: 'LINK', name: 'Chainlink', coingeckoId: 'chainlink' },
   { ticker: 'DOT', name: 'Polkadot', coingeckoId: 'polkadot' },
-  { ticker: 'XRP', name: 'XRP', coingeckoId: 'ripple' },
+
+  // Established alts
   { ticker: 'LTC', name: 'Litecoin', coingeckoId: 'litecoin' },
   { ticker: 'TRX', name: 'TRON', coingeckoId: 'tron' },
   { ticker: 'TON', name: 'Toncoin', coingeckoId: 'the-open-network' },
   { ticker: 'XLM', name: 'Stellar', coingeckoId: 'stellar' },
-  { ticker: 'SHIB', name: 'Shiba Inu', coingeckoId: 'shiba-inu' },
   { ticker: 'UNI', name: 'Uniswap', coingeckoId: 'uniswap' },
   { ticker: 'NEAR', name: 'NEAR Protocol', coingeckoId: 'near' },
   { ticker: 'SUI', name: 'Sui', coingeckoId: 'sui' },
+  { ticker: 'BCH', name: 'Bitcoin Cash', coingeckoId: 'bitcoin-cash' },
+  { ticker: 'ATOM', name: 'Cosmos', coingeckoId: 'cosmos' },
+  { ticker: 'APT', name: 'Aptos', coingeckoId: 'aptos' },
+  { ticker: 'ARB', name: 'Arbitrum', coingeckoId: 'arbitrum' },
+  { ticker: 'OP', name: 'Optimism', coingeckoId: 'optimism' },
+  { ticker: 'FIL', name: 'Filecoin', coingeckoId: 'filecoin' },
+  { ticker: 'HBAR', name: 'Hedera', coingeckoId: 'hedera-hashgraph' },
+  { ticker: 'VET', name: 'VeChain', coingeckoId: 'vechain' },
+  { ticker: 'AAVE', name: 'Aave', coingeckoId: 'aave' },
+  { ticker: 'ALGO', name: 'Algorand', coingeckoId: 'algorand' },
+  { ticker: 'ETC', name: 'Ethereum Classic', coingeckoId: 'ethereum-classic' },
+  { ticker: 'INJ', name: 'Injective', coingeckoId: 'injective-protocol' },
+
+  // Trending / meme (heavily searched by newer traders)
+  { ticker: 'SHIB', name: 'Shiba Inu', coingeckoId: 'shiba-inu' },
+  { ticker: 'PEPE', name: 'Pepe', coingeckoId: 'pepe' },
+  { ticker: 'BONK', name: 'Bonk', coingeckoId: 'bonk' },
 ]
 
-export const GLOBAL_STOCK_TICKERS = new Set(
-  STOCK_ASSETS.filter(a => a.region === 'global').map(a => a.ticker)
-)
-
 export const ASSET_NAMES: Record<string, string> = Object.fromEntries(
-  [...STOCK_ASSETS, ...CRYPTO_ASSETS].map(a => [a.ticker, a.name])
+  CRYPTO_ASSETS.map(a => [a.ticker, a.name])
 )

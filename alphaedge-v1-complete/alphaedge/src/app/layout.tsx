@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'AlphaEdge — AI Market Analysis',
-  description: 'Educational AI-powered technical analysis for stocks and crypto',
+  description: 'Educational AI-powered technical analysis for the top cryptocurrencies',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
