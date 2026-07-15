@@ -20,7 +20,9 @@ type PositionRow = { user_id: string; ticker: string; quantity: number; entry_pr
 function fmt(p: number) {
   if (p >= 1000) return `$${p.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
   if (p >= 1) return `$${p.toFixed(2)}`
-  return `$${p.toFixed(4)}`
+  if (p >= 0.01) return `$${p.toFixed(4)}`
+  // Sub-cent coins (SHIB, etc.) need significant digits, not fixed decimals
+  return p > 0 ? `$${p.toPrecision(3)}` : '$0'
 }
 
 function assetCard(sig: GeneratedSignal, prevType: string, positions: PositionRow[]) {
