@@ -28,7 +28,9 @@ export interface GeneratedSignal {
   volume_ratio: number | null
   ai_reasoning: string
   simple_reasoning: string
-  chart_closes: { t: number; c: number }[]
+  chart_closes: { t: number; c: number; m?: number }[]
+  percent_change_24h: number | null
+  ath_change_pct: number | null
 }
 
 // ── Trader profile → prompt description ──────────────────
@@ -157,9 +159,28 @@ ${snapshot.ohlcv.slice(-5).map(c =>
     volume_ratio: volumeRatio,
     ai_reasoning: parsed.ai_reasoning,
     simple_reasoning: parsed.simple_summary ?? '',
-    // Compact close series for the expanded-card chart (~30 most recent candles)
-    chart_closes: snapshot.ohlcv.slice(-30).map(c => ({ t: c.timestamp, c: c.close })),
+    chart_closes: buildChartSeries(snapshot),
+    percent_change_24h: snapshot.percentChange24h ?? null,
+    ath_change_pct: snapshot.athChangePct ?? null,
   }
+}
+
+// Compact series for the expanded-card chart: the ~30 most recent closes,
+// each with the 20-period average at that point when enough history exists.
+function buildChartSeries(snapshot: MarketSnapshot) {
+  const all = snapshot.ohlcv
+  const closes = all.map(c => c.close)
+  const pts = all.slice(-30)
+  const offset = all.length - pts.length
+  return pts.map((c, idx) => {
+    const end = offset + idx + 1
+    const point: { t: number; c: number; m?: number } = { t: c.timestamp, c: c.close }
+    if (end >= 20) {
+      const avg = closes.slice(end - 20, end).reduce((a, b) => a + b, 0) / 20
+      point.m = Number(avg.toPrecision(6))
+    }
+    return point
+  })
 }
 
 export async function generateAndCacheAllSignals(
@@ -210,6 +231,28 @@ export async function generateAndCacheAllSignals(
   )
 
   if (error) console.error('Failed to cache signals:', error)
+
+  // Permanently record signal flips (and first sightings) for the public
+  // track-record page. Append-only; never blocks signal generation.
+  try {
+    const flips = results
+      .filter(s => previousByTicker.get(s.ticker) !== s.signal_type)
+      .map(s => ({
+        ticker: s.ticker,
+        market: s.market,
+        signal_type: s.signal_type,
+        previous_type: previousByTicker.get(s.ticker) ?? null,
+        confidence: s.confidence,
+        price: s.price,
+        generated_at: new Date().toISOString(),
+      }))
+    if (flips.length > 0) {
+      const { error: histError } = await supabase.from('signal_history').insert(flips)
+      if (histError) console.error('Failed to record signal history:', histError)
+    }
+  } catch (err) {
+    console.error('Signal history recording failed:', err)
+  }
 
   try {
     await sendSignalChangeAlerts(previousByTicker, results)
