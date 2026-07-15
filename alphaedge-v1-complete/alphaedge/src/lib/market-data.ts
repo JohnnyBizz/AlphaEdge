@@ -29,6 +29,8 @@ export interface MarketSnapshot {
   bollingerBands: { upper: number; middle: number; lower: number }
   vwap: number | null
   marketCap?: number
+  // Crypto only: % distance from all-time high (negative = below ATH)
+  athChangePct?: number | null
 }
 
 // ── Technical indicators ──────────────────────────────────
@@ -185,6 +187,7 @@ export async function fetchCryptoSnapshot(ticker: string): Promise<MarketSnapsho
     bollingerBands: calcBollingerBands(closes),
     vwap: null,
     marketCap: md.market_cap?.usd ?? 0,
+    athChangePct: md.ath_change_percentage?.usd ?? null,
   }
 }
 

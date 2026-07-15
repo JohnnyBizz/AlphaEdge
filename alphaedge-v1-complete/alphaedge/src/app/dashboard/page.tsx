@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import SignalChart from '@/components/SignalChart'
+import GlossaryText from '@/components/GlossaryText'
 import { ASSET_NAMES, GLOBAL_STOCK_TICKERS } from '@/lib/assets'
 import {
-  TrendingUp, RefreshCw, LogOut, BarChart2, Bitcoin, Building2, Eye, Settings, CreditCard,
+  TrendingUp, RefreshCw, LogOut, BarChart2, Bitcoin, Building2, Eye, Settings, CreditCard, BookOpen,
 } from 'lucide-react'
 
 type Signal = {
@@ -17,7 +18,9 @@ type Signal = {
   stop_loss: number | null; rsi: number | null; macd_signal: string | null
   volume_ratio: number | null; ai_reasoning: string; generated_at: string
   simple_reasoning: string | null
-  chart_closes: { t: number; c: number }[] | null
+  chart_closes: { t: number; c: number; m?: number }[] | null
+  percent_change_24h: number | null
+  ath_change_pct: number | null
 }
 
 type Filter = 'all' | 'stock' | 'global' | 'crypto' | 'buy' | 'sell'
@@ -340,6 +343,12 @@ export default function DashboardPage() {
               Updated {lastUpdated.toLocaleTimeString()}
             </span>
           )}
+          <Link href="/learn" title="Learn the basics"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)', textDecoration: 'none' }}>
+            <BookOpen size={12} />
+            <span className="hidden md:inline">Learn</span>
+          </Link>
           <Link href="/onboarding" title="Update trading profile"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)', textDecoration: 'none' }}>
@@ -388,6 +397,34 @@ export default function DashboardPage() {
 
         {/* My Positions */}
         <PositionsSection signals={signals} />
+
+        {/* Today's biggest movers */}
+        {(() => {
+          const movers = signals
+            .filter(s => s.percent_change_24h != null)
+            .sort((a, b) => Math.abs(b.percent_change_24h!) - Math.abs(a.percent_change_24h!))
+            .slice(0, 5)
+          if (movers.length < 3) return null
+          return (
+            <div className="flex items-center gap-2 mb-5 flex-wrap">
+              <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                Biggest movers today:
+              </span>
+              {movers.map(s => (
+                <button key={s.ticker} type="button"
+                  onClick={() => { setFilter('all'); setSelectedSignal(s) }}
+                  className="px-2.5 py-1 rounded-full text-xs font-semibold"
+                  style={{
+                    background: (s.percent_change_24h ?? 0) >= 0 ? 'var(--accent-dim)' : 'var(--red-dim)',
+                    color: (s.percent_change_24h ?? 0) >= 0 ? 'var(--accent)' : 'var(--red)',
+                    border: 'none', cursor: 'pointer',
+                  }}>
+                  {s.ticker} {(s.percent_change_24h ?? 0) >= 0 ? '+' : ''}{s.percent_change_24h!.toFixed(1)}%
+                </button>
+              ))}
+            </div>
+          )
+        })()}
 
         {/* Filter pills */}
         <div className="flex gap-2 mb-5 flex-wrap">
@@ -457,8 +494,16 @@ export default function DashboardPage() {
                   <SignalBadge type={signal.signal_type} />
                 </div>
 
-                <div className="text-xl font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
-                  {formatPrice(signal.price)}
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {formatPrice(signal.price)}
+                  </span>
+                  {signal.percent_change_24h != null && (
+                    <span className="text-xs font-semibold"
+                      style={{ color: signal.percent_change_24h >= 0 ? 'var(--accent)' : 'var(--red)' }}>
+                      {signal.percent_change_24h >= 0 ? '+' : ''}{signal.percent_change_24h.toFixed(2)}% today
+                    </span>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -517,11 +562,11 @@ export default function DashboardPage() {
                     <div className="mb-4">
                       {signal.simple_reasoning && (
                         <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-                          Technical detail
+                          Technical detail <span className="font-normal" style={{ color: 'var(--text-muted)' }}>— tap any underlined term for a plain-English meaning</span>
                         </div>
                       )}
                       <div className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                        {signal.ai_reasoning}
+                        <GlossaryText text={signal.ai_reasoning} />
                       </div>
                     </div>
 
@@ -547,6 +592,14 @@ export default function DashboardPage() {
                           <div style={{ color: 'var(--text-muted)' }}>Key support break</div>
                           <div className="font-medium mt-0.5" style={{ color: 'var(--red)' }}>
                             {formatPrice(signal.stop_loss)}
+                          </div>
+                        </div>
+                      )}
+                      {signal.ath_change_pct != null && signal.ath_change_pct < -1 && (
+                        <div className="p-2 rounded-lg" style={{ background: 'var(--bg-card)' }}>
+                          <div style={{ color: 'var(--text-muted)' }}>vs all-time high</div>
+                          <div className="font-medium mt-0.5" style={{ color: 'var(--text-primary)' }}>
+                            {Math.abs(signal.ath_change_pct).toFixed(0)}% below record
                           </div>
                         </div>
                       )}
@@ -583,6 +636,10 @@ export default function DashboardPage() {
           investing involve substantial risk of loss. Past performance is not indicative of future results.
           Always do your own research and consult a qualified financial advisor before making any investment
           decisions.{' '}
+          <Link href="/track-record" style={{ color: 'var(--accent)' }}>Track record</Link>
+          {' · '}
+          <Link href="/learn" style={{ color: 'var(--accent)' }}>Learn</Link>
+          {' · '}
           <Link href="/terms" style={{ color: 'var(--accent)' }}>Terms</Link>
           {' · '}
           <Link href="/privacy" style={{ color: 'var(--accent)' }}>Privacy</Link>

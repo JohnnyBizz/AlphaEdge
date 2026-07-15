@@ -10,9 +10,10 @@ import {
 // below are visible in context — the shaded band is the support zone,
 // green dashes the next resistance, red dashes the key support break.
 
-type Close = { t: number; c: number }
+type Close = { t: number; c: number; m?: number }
 
 const LINE = '#5b8def'      // price series (validated vs dark surface)
+const AVG = '#8892a4'       // 20-day average — deliberately recessive, dashed
 const GREEN = '#00e5a0'     // matches var(--accent)
 const RED = '#f04a4a'       // matches var(--red)
 const MUTED = '#4a5568'     // matches var(--text-muted)
@@ -47,6 +48,9 @@ function ChartTooltip({ active, payload }: {
       style={{ background: 'var(--bg-card)', border: '1px solid var(--border-hover)' }}>
       <div style={{ color: 'var(--text-muted)' }}>{shortDate(p.t)}</div>
       <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{compactPrice(p.c)}</div>
+      {p.m !== undefined && (
+        <div style={{ color: 'var(--text-secondary)' }}>20-day avg {compactPrice(p.m)}</div>
+      )}
     </div>
   )
 }
@@ -61,6 +65,8 @@ export default function SignalChart({ closes, entryLow, entryHigh, target, stop 
   if (!closes || closes.length < 5) return null
 
   const values = closes.map(c => c.c)
+  const hasAvg = closes.some(c => c.m !== undefined)
+  for (const c of closes) { if (c.m !== undefined) values.push(c.m) }
   for (const lvl of [entryLow, entryHigh, target, stop]) {
     if (lvl !== null && lvl > 0) values.push(lvl)
   }
@@ -73,7 +79,18 @@ export default function SignalChart({ closes, entryLow, entryHigh, target, stop 
   })
 
   return (
-    <div style={{ width: '100%', height: 180 }} onClick={e => e.stopPropagation()}>
+    <div onClick={e => e.stopPropagation()}>
+      {hasAvg && (
+        <div className="flex gap-3 text-[10px] mb-1" style={{ color: 'var(--text-muted)' }}>
+          <span className="inline-flex items-center gap-1">
+            <span style={{ width: 12, height: 2, background: LINE, display: 'inline-block', borderRadius: 1 }} /> Price
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span style={{ width: 12, height: 0, borderTop: `2px dashed ${AVG}`, display: 'inline-block' }} /> 20-day average
+          </span>
+        </div>
+      )}
+      <div style={{ width: '100%', height: 180 }}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={closes} margin={{ top: 8, right: 6, bottom: 0, left: 0 }}>
           <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -113,6 +130,14 @@ export default function SignalChart({ closes, entryLow, entryHigh, target, stop 
             />
           )}
 
+          {hasAvg && (
+            <Line
+              type="monotone" dataKey="m"
+              stroke={AVG} strokeWidth={1.5} strokeDasharray="5 4"
+              dot={false} activeDot={false}
+              isAnimationActive={false} connectNulls
+            />
+          )}
           <Line
             type="monotone" dataKey="c"
             stroke={LINE} strokeWidth={2}
@@ -121,6 +146,7 @@ export default function SignalChart({ closes, entryLow, entryHigh, target, stop 
           />
         </ComposedChart>
       </ResponsiveContainer>
+      </div>
     </div>
   )
 }
