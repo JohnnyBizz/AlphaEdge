@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseContext } from '@/lib/supabase/context'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchAllMarketData } from '@/lib/market-data'
 import { generateAndCacheAllSignals, getTraderProfile } from '@/lib/signal-engine'
 
@@ -14,9 +15,26 @@ function isCronRequest(req: NextRequest) {
   return !!secret && req.headers.get('authorization') === `Bearer ${secret}`
 }
 
+// Cost guard: the scheduled refresh spends real money on AI analysis, so
+// skip it entirely when there is no active or trialing subscriber to serve.
+// The user-facing flow below still generates on demand if the cache is
+// empty, so the first subscriber after a quiet period is never locked out.
+async function hasAnyActiveSubscriber(): Promise<boolean> {
+  const supabase = createAdminClient()
+  const { count } = await supabase
+    .from('subscriptions')
+    .select('*', { count: 'exact', head: true })
+    .in('status', ['active', 'trialing'])
+    .gt('current_period_end', new Date().toISOString())
+  return (count ?? 0) > 0
+}
+
 export async function GET(req: NextRequest) {
   // Hourly cron refresh (vercel.json) — no user session involved
   if (isCronRequest(req)) {
+    if (!(await hasAnyActiveSubscriber())) {
+      return NextResponse.json({ refreshed: false, skipped: 'no active subscribers' })
+    }
     const snapshots = await fetchAllMarketData()
     const signals = await generateAndCacheAllSignals(snapshots, null)
     return NextResponse.json({ count: signals.length, refreshed: true })
@@ -71,6 +89,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  if (!(await hasAnyActiveSubscriber())) {
+    return NextResponse.json({ refreshed: false, skipped: 'no active subscribers' })
+  }
   const snapshots = await fetchAllMarketData()
   const signals = await generateAndCacheAllSignals(snapshots, null)
   return NextResponse.json({ count: signals.length })
