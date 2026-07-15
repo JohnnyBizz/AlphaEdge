@@ -142,6 +142,11 @@ export default function TrackRecordPage() {
           analysis is educational information, not financial advice — past signals are not a promise
           of future results.{' '}
           <Link href="/disclaimer" style={{ color: 'var(--accent)' }}>Full disclaimer</Link>
+          <div className="mt-2">
+            Data provided by{' '}
+            <a href="https://www.coingecko.com/en/api" target="_blank" rel="noopener noreferrer"
+              style={{ color: 'var(--text-secondary)' }}>CoinGecko</a>
+          </div>
         </div>
       </div>
     </div>
