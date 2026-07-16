@@ -91,14 +91,18 @@ const COINGECKO_IDS: Record<string, string> = Object.fromEntries(
 export async function fetchCryptoSnapshot(ticker: string): Promise<MarketSnapshot> {
   const coinId = COINGECKO_IDS[ticker] ?? ticker.toLowerCase()
   const apiKey = process.env.COINGECKO_API_KEY
-  const headers: Record<string, string> = apiKey ? { 'x-cg-demo-api-key': apiKey } : {}
+  // Paid CoinGecko keys (Basic and up) authenticate against the pro host
+  // with the pro header — they are rejected by the public host's demo
+  // header. Without a key, fall back to the public (keyless) host.
+  const base = apiKey ? 'https://pro-api.coingecko.com/api/v3' : COINGECKO_BASE
+  const headers: Record<string, string> = apiKey ? { 'x-cg-pro-api-key': apiKey } : {}
 
   const [marketRes, ohlcvRes] = await Promise.all([
-    fetch(`${COINGECKO_BASE}/coins/${coinId}?localization=false&tickers=false&community_data=false`, { headers }),
+    fetch(`${base}/coins/${coinId}?localization=false&tickers=false&community_data=false`, { headers }),
     // Note: CoinGecko's OHLC endpoint only accepts days=1|7|14|30|90|180|365
     // (60 is rejected with a 400). 180 days yields ~45 four-day candles —
     // enough history for the RSI/MACD/Bollinger calculations.
-    fetch(`${COINGECKO_BASE}/coins/${coinId}/ohlc?vs_currency=usd&days=180`, { headers }),
+    fetch(`${base}/coins/${coinId}/ohlc?vs_currency=usd&days=180`, { headers }),
   ])
 
   if (!marketRes.ok || !ohlcvRes.ok) {
@@ -149,16 +153,31 @@ export const TRACKED_ASSETS = {
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 export async function fetchAllMarketData(): Promise<MarketSnapshot[]> {
-  // CoinGecko's demo tier (30 req/min) needs pacing: each coin is 2 parallel
-  // requests, so 4.5s between coins keeps the sustained rate under ~27
-  // req/min. On the commercial Analyst plan (500 req/min) this loop can be
-  // parallelized for a much faster refresh.
+  // With a paid CoinGecko key (Basic: well above 100 req/min) coins can be
+  // fetched in parallel batches — 8 coins = 16 requests per batch, with a
+  // 1s pause between batches, stays comfortably under the limit. Without a
+  // key, the public host allows ~30 req/min, so fall back to slow pacing.
+  const hasPaidKey = !!process.env.COINGECKO_API_KEY
   const cryptoResults: (MarketSnapshot | null)[] = []
-  for (const t of TRACKED_ASSETS.crypto) {
-    cryptoResults.push(
-      await fetchCryptoSnapshot(t).catch(e => { console.error(`Crypto fetch failed: ${t}`, e); return null })
-    )
-    await sleep(4500)
+
+  if (hasPaidKey) {
+    for (let i = 0; i < TRACKED_ASSETS.crypto.length; i += 8) {
+      const batch = TRACKED_ASSETS.crypto.slice(i, i + 8)
+      const settled = await Promise.all(
+        batch.map(t =>
+          fetchCryptoSnapshot(t).catch(e => { console.error(`Crypto fetch failed: ${t}`, e); return null })
+        )
+      )
+      cryptoResults.push(...settled)
+      if (i + 8 < TRACKED_ASSETS.crypto.length) await sleep(1000)
+    }
+  } else {
+    for (const t of TRACKED_ASSETS.crypto) {
+      cryptoResults.push(
+        await fetchCryptoSnapshot(t).catch(e => { console.error(`Crypto fetch failed: ${t}`, e); return null })
+      )
+      await sleep(4500)
+    }
   }
 
   return cryptoResults.filter(Boolean) as MarketSnapshot[]
