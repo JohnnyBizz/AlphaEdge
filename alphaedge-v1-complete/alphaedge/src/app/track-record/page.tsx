@@ -32,6 +32,32 @@ function formatPrice(p: number) {
   return p > 0 ? `$${p.toPrecision(3)}` : '$0'
 }
 
+// Honest per-call grading:
+// - NEUTRAL calls predict no direction, so they are never graded
+// - calls under 24h old are "too early" — no verdict until the market has
+//   had a real chance to move
+// - moves inside ±1% are "flat", counted as neither hit nor miss
+type Verdict = 'hit' | 'miss' | 'flat' | 'early' | null
+
+function gradeCall(r: HistoryRow): { verdict: Verdict; move: number | null } {
+  const move = r.current_price != null && r.price > 0
+    ? ((r.current_price / r.price) - 1) * 100
+    : null
+  if (r.signal_type === 'watch' || move == null) return { verdict: null, move }
+  const ageHours = (Date.now() - new Date(r.generated_at).getTime()) / 3_600_000
+  if (ageHours < 24) return { verdict: 'early', move }
+  if (Math.abs(move) < 1) return { verdict: 'flat', move }
+  const favorable = r.signal_type === 'buy' ? move > 0 : move < 0
+  return { verdict: favorable ? 'hit' : 'miss', move }
+}
+
+const VERDICT_CHIP: Record<Exclude<Verdict, null>, { text: string; color: string; bg: string }> = {
+  hit: { text: '✓ On target', color: 'var(--accent)', bg: 'var(--accent-dim)' },
+  miss: { text: '✗ Off the mark', color: 'var(--red)', bg: 'var(--red-dim)' },
+  flat: { text: '≈ Flat so far', color: 'var(--amber)', bg: 'var(--amber-dim)' },
+  early: { text: 'Too early to grade', color: 'var(--text-muted)', bg: 'var(--bg-card)' },
+}
+
 export default function TrackRecordPage() {
   const [rows, setRows] = useState<HistoryRow[] | null>(null)
   const [error, setError] = useState(false)
@@ -91,14 +117,34 @@ export default function TrackRecordPage() {
           </div>
         )}
 
-        {rows !== null && rows.length > 0 && (
+        {rows !== null && rows.length > 0 && (() => {
+          const graded = rows.map(r => gradeCall(r))
+          const hits = graded.filter(g => g.verdict === 'hit').length
+          const misses = graded.filter(g => g.verdict === 'miss').length
+          const scored = hits + misses
+          return (
+          <>
+          {scored >= 5 && (
+            <div className="mb-4 p-4 rounded-xl flex items-center gap-4 flex-wrap"
+              style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+              <div>
+                <div className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>
+                  {Math.round((hits / scored) * 100)}%
+                </div>
+                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>moved in our favor</div>
+              </div>
+              <div className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)', maxWidth: '32rem' }}>
+                Of {scored} graded directional calls (bullish or bearish, at least 24 hours old,
+                excluding moves under ±1%), {hits} moved the way the analysis suggested.
+                Neutral stances make no direction call, so they are never graded.
+              </div>
+            </div>
+          )}
           <div className="space-y-2">
             {rows.map((r, i) => {
               const now = LABELS[r.signal_type] ?? LABELS.watch
               const was = r.previous_type ? (LABELS[r.previous_type] ?? LABELS.watch) : null
-              const move = r.current_price != null && r.price > 0
-                ? ((r.current_price / r.price) - 1) * 100
-                : null
+              const { verdict, move } = graded[i]
               return (
                 <div key={i} className="p-4 rounded-xl flex items-center justify-between gap-3 flex-wrap"
                   style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
@@ -123,19 +169,29 @@ export default function TrackRecordPage() {
                       at {formatPrice(r.price)}
                     </div>
                   </div>
-                  {move != null && Math.abs(move) >= 0.05 && (
-                    <div className="text-right">
-                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>price since</div>
-                      <div className="text-sm font-bold" style={{ color: move >= 0 ? 'var(--accent)' : 'var(--red)' }}>
-                        {move >= 0 ? '+' : ''}{move.toFixed(1)}%
+                  <div className="flex items-center gap-3">
+                    {move != null && Math.abs(move) >= 0.05 && (
+                      <div className="text-right">
+                        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>price since</div>
+                        <div className="text-sm font-bold" style={{ color: move >= 0 ? 'var(--accent)' : 'var(--red)' }}>
+                          {move >= 0 ? '+' : ''}{move.toFixed(1)}%
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                    {verdict && (
+                      <span className="text-xs font-semibold px-2 py-1 rounded-lg whitespace-nowrap"
+                        style={{ color: VERDICT_CHIP[verdict].color, background: VERDICT_CHIP[verdict].bg }}>
+                        {VERDICT_CHIP[verdict].text}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )
             })}
           </div>
-        )}
+          </>
+          )
+        })()}
 
         <div className="mt-8 p-4 rounded-xl text-xs" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-muted)', lineHeight: 1.7 }}>
           Signal changes are recorded automatically and cannot be edited or deleted. AlphaEdge
