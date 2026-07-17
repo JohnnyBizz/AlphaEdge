@@ -151,6 +151,8 @@ export default function LearnPage() {
           Educational content only — nothing on this page is financial advice. Trading and investing
           involve substantial risk of loss.{' '}
           <Link href="/disclaimer" style={{ color: 'var(--accent)' }}>Full disclaimer</Link>
+          {' · '}
+          <a href="mailto:support@alphaedge.network" style={{ color: 'var(--accent)' }}>Support</a>
         </div>
       </div>
     </div>

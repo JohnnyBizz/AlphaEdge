@@ -198,6 +198,8 @@ export default function TrackRecordPage() {
           analysis is educational information, not financial advice — past signals are not a promise
           of future results.{' '}
           <Link href="/disclaimer" style={{ color: 'var(--accent)' }}>Full disclaimer</Link>
+          {' · '}
+          <a href="mailto:support@alphaedge.network" style={{ color: 'var(--accent)' }}>Support</a>
           <div className="mt-2">
             Data provided by{' '}
             <a href="https://www.coingecko.com/en/api" target="_blank" rel="noopener noreferrer"

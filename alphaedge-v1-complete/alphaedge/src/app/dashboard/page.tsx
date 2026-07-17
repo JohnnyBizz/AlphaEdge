@@ -643,6 +643,8 @@ export default function DashboardPage() {
           <Link href="/privacy" style={{ color: 'var(--accent)' }}>Privacy</Link>
           {' · '}
           <Link href="/disclaimer" style={{ color: 'var(--accent)' }}>Full disclaimer</Link>
+          {' · '}
+          <a href="mailto:support@alphaedge.network" style={{ color: 'var(--accent)' }}>Support</a>
           <div className="mt-2" style={{ color: 'var(--text-muted)' }}>
             Data provided by{' '}
             <a href="https://www.coingecko.com/en/api" target="_blank" rel="noopener noreferrer"
