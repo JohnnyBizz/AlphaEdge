@@ -25,7 +25,8 @@ export async function createCheckoutSession({
 
   return stripe.checkout.sessions.create({
     mode: 'subscription',
-    payment_method_types: ['card'],
+    // No payment_method_types: Checkout automatically offers every method
+    // enabled in the Stripe dashboard, localized to the customer's country.
     customer_email: email,
     line_items: [{ price: selectedPlan.priceId, quantity: 1 }],
     subscription_data: {
@@ -33,6 +34,10 @@ export async function createCheckoutSession({
       metadata: { userId, plan },
     },
     metadata: { userId, plan },
+    // Stripe Tax (VAT/GST for international customers). Off until Tax is
+    // enabled in the Stripe dashboard — enabling it here first would make
+    // checkout-session creation fail.
+    ...(process.env.STRIPE_TAX_ENABLED === 'true' ? { automatic_tax: { enabled: true } } : {}),
     success_url: successUrl ?? `${process.env.NEXT_PUBLIC_APP_URL}/onboarding`,
     cancel_url:  cancelUrl  ?? `${process.env.NEXT_PUBLIC_APP_URL}/auth?canceled=true`,
   })
