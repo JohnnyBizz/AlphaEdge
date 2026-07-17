@@ -39,11 +39,27 @@ export const CRYPTO_ASSETS: { ticker: string; name: string; coingeckoId: string 
   { ticker: 'ALGO', name: 'Algorand', coingeckoId: 'algorand' },
   { ticker: 'ETC', name: 'Ethereum Classic', coingeckoId: 'ethereum-classic' },
   { ticker: 'INJ', name: 'Injective', coingeckoId: 'injective-protocol' },
+  { ticker: 'POL', name: 'Polygon', coingeckoId: 'polygon-ecosystem-token' },
+  { ticker: 'XMR', name: 'Monero', coingeckoId: 'monero' },
+  { ticker: 'KAS', name: 'Kaspa', coingeckoId: 'kaspa' },
+  { ticker: 'GRT', name: 'The Graph', coingeckoId: 'the-graph' },
+  { ticker: 'TIA', name: 'Celestia', coingeckoId: 'celestia' },
+  { ticker: 'SEI', name: 'Sei', coingeckoId: 'sei-network' },
+  { ticker: 'IMX', name: 'Immutable', coingeckoId: 'immutable-x' },
+  { ticker: 'FLR', name: 'Flare', coingeckoId: 'flare-networks' },
+  { ticker: 'WLFI', name: 'World Liberty Financial', coingeckoId: 'world-liberty-financial' },
+
+  // AI-narrative coins (heavily traded theme)
+  { ticker: 'TAO', name: 'Bittensor', coingeckoId: 'bittensor' },
+  { ticker: 'FET', name: 'Fetch.ai', coingeckoId: 'fetch-ai' },
+  { ticker: 'RENDER', name: 'Render', coingeckoId: 'render-token' },
 
   // Trending / meme (heavily searched by newer traders)
   { ticker: 'SHIB', name: 'Shiba Inu', coingeckoId: 'shiba-inu' },
   { ticker: 'PEPE', name: 'Pepe', coingeckoId: 'pepe' },
   { ticker: 'BONK', name: 'Bonk', coingeckoId: 'bonk' },
+  { ticker: 'WIF', name: 'dogwifhat', coingeckoId: 'dogwifcoin' },
+  { ticker: 'FLOKI', name: 'Floki', coingeckoId: 'floki' },
 ]
 
 export const ASSET_NAMES: Record<string, string> = Object.fromEntries(

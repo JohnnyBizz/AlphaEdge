@@ -8,7 +8,7 @@ import SignalChart from '@/components/SignalChart'
 import GlossaryText from '@/components/GlossaryText'
 import { ASSET_NAMES } from '@/lib/assets'
 import {
-  TrendingUp, RefreshCw, LogOut, BarChart2, Bitcoin, Eye, Settings, CreditCard, BookOpen,
+  TrendingUp, RefreshCw, LogOut, BarChart2, Bitcoin, Eye, Settings, CreditCard, BookOpen, History,
 } from 'lucide-react'
 
 type Signal = {
@@ -340,6 +340,12 @@ export default function DashboardPage() {
               Updated {lastUpdated.toLocaleTimeString()}
             </span>
           )}
+          <Link href="/track-record" title="See our past calls and how they played out"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)', textDecoration: 'none' }}>
+            <History size={12} />
+            <span className="hidden md:inline">Track record</span>
+          </Link>
           <Link href="/learn" title="Learn the basics"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)', textDecoration: 'none' }}>
