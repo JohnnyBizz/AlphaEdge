@@ -568,29 +568,57 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
+                    {/* Plain-English setup line: what to actually do with the levels */}
+                    {signal.entry_low && signal.entry_high && signal.stop_loss && (
+                      <div className="text-xs leading-relaxed p-2.5 rounded-lg mb-3"
+                        style={{ background: 'var(--accent-dim)', border: '1px solid rgba(0,229,160,0.2)', color: 'var(--text-secondary)' }}>
+                        <span className="font-semibold" style={{ color: 'var(--accent)' }}>The setup: </span>
+                        {signal.signal_type === 'buy' && (
+                          <>the analysis sees {formatPrice(signal.entry_low)}–{formatPrice(signal.entry_high)} as
+                          the zone to consider buying in{signal.target_price ? <>, aiming toward {formatPrice(signal.target_price)}</> : null}
+                          {' '}— and getting out if the price falls below {formatPrice(signal.stop_loss)}.</>
+                        )}
+                        {signal.signal_type === 'watch' && (
+                          <>nothing to act on yet — but if you&apos;re waiting to get in,
+                          {' '}{formatPrice(signal.entry_low)}–{formatPrice(signal.entry_high)} is the buy-in zone to watch.
+                          {signal.target_price ? <> A push above {formatPrice(signal.target_price)} would strengthen the case;</> : null}
+                          {' '}a drop below {formatPrice(signal.stop_loss)} would weaken it.</>
+                        )}
+                        {signal.signal_type === 'sell' && (
+                          <>the technicals lean negative — holders often treat a drop below {formatPrice(signal.stop_loss)} as
+                          the get-out signal, while {formatPrice(signal.entry_low)}–{formatPrice(signal.entry_high)} is where
+                          buyers may step back in.</>
+                        )}
+                        <span style={{ color: 'var(--text-muted)' }}> Educational scenario, not a recommendation.</span>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       {signal.entry_low && signal.entry_high && (
                         <div className="p-2 rounded-lg" style={{ background: 'var(--bg-card)' }}>
-                          <div style={{ color: 'var(--text-muted)' }}>Support zone</div>
+                          <div style={{ color: 'var(--text-muted)' }}>Buy-in zone to watch</div>
                           <div className="font-medium mt-0.5" style={{ color: 'var(--text-primary)' }}>
                             {formatPrice(signal.entry_low)} – {formatPrice(signal.entry_high)}
                           </div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>near support</div>
                         </div>
                       )}
                       {signal.target_price && (
                         <div className="p-2 rounded-lg" style={{ background: 'var(--bg-card)' }}>
-                          <div style={{ color: 'var(--text-muted)' }}>Next resistance</div>
+                          <div style={{ color: 'var(--text-muted)' }}>Price target</div>
                           <div className="font-medium mt-0.5" style={{ color: 'var(--accent)' }}>
                             {formatPrice(signal.target_price)}
                           </div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>next resistance</div>
                         </div>
                       )}
                       {signal.stop_loss && (
                         <div className="p-2 rounded-lg" style={{ background: 'var(--bg-card)' }}>
-                          <div style={{ color: 'var(--text-muted)' }}>Key support break</div>
+                          <div style={{ color: 'var(--text-muted)' }}>Get-out level</div>
                           <div className="font-medium mt-0.5" style={{ color: 'var(--red)' }}>
                             {formatPrice(signal.stop_loss)}
                           </div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>setup fails below this</div>
                         </div>
                       )}
                       {signal.ath_change_pct != null && signal.ath_change_pct < -1 && (
