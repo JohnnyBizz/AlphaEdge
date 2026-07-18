@@ -114,19 +114,19 @@ export default function SignalChart({ closes, entryLow, entryHigh, target, stop 
             <ReferenceArea
               y1={entryLow} y2={entryHigh}
               fill={GREEN} fillOpacity={0.08} stroke="none"
-              label={refLabel('Support zone', GREEN)}
+              label={refLabel('Buy-in zone', GREEN)}
             />
           )}
           {target !== null && (
             <ReferenceLine
               y={target} stroke={GREEN} strokeDasharray="4 4" strokeOpacity={0.8}
-              label={refLabel('Next resistance', GREEN)}
+              label={refLabel('Price target', GREEN)}
             />
           )}
           {stop !== null && (
             <ReferenceLine
               y={stop} stroke={RED} strokeDasharray="4 4" strokeOpacity={0.8}
-              label={refLabel('Key support break', RED)}
+              label={refLabel('Get-out level', RED)}
             />
           )}
 
