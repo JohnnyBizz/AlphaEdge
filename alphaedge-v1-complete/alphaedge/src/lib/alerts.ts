@@ -25,6 +25,32 @@ function fmt(p: number) {
   return p > 0 ? `$${p.toPrecision(3)}` : '$0'
 }
 
+// Same plain-English action framing as the dashboard's "The setup:" line.
+// Coerces values because Postgres numerics can arrive as strings.
+export function setupLine(sig: {
+  signal_type: string
+  entry_low: number | string | null; entry_high: number | string | null
+  target_price: number | string | null; stop_loss: number | string | null
+}): string | null {
+  const toN = (v: number | string | null) => (v == null ? null : Number(v)) || null
+  const entry_low = toN(sig.entry_low)
+  const entry_high = toN(sig.entry_high)
+  const stop_loss = toN(sig.stop_loss)
+  const target_price = toN(sig.target_price)
+  if (!entry_low || !entry_high || !stop_loss) return null
+  if (sig.signal_type === 'buy') {
+    return `The setup: ${fmt(entry_low)}–${fmt(entry_high)} is the buy-in zone the analysis is watching` +
+      (target_price ? `, aiming toward ${fmt(target_price)}` : '') +
+      ` — with ${fmt(stop_loss)} as the get-out level.`
+  }
+  if (sig.signal_type === 'sell') {
+    return `Holders often treat a drop below ${fmt(stop_loss)} as the get-out signal; ` +
+      `${fmt(entry_low)}–${fmt(entry_high)} is where buyers may step back in.`
+  }
+  return `Nothing to act on yet — the buy-in zone to watch is ${fmt(entry_low)}–${fmt(entry_high)}; ` +
+    `a drop below ${fmt(stop_loss)} would weaken the setup.`
+}
+
 function assetCard(sig: GeneratedSignal, prevType: string, positions: PositionRow[]) {
   const now = LABELS[sig.signal_type] ?? LABELS.watch
   const was = LABELS[prevType] ?? LABELS.watch
@@ -47,6 +73,7 @@ function assetCard(sig: GeneratedSignal, prevType: string, positions: PositionRo
     </div>
     ${posLines}
     ${(sig.simple_reasoning || sig.ai_reasoning) ? `<div style="font-size:13px;color:#4b5563;margin-top:10px;border-left:3px solid #e5e7eb;padding-left:10px;">${sig.simple_reasoning || sig.ai_reasoning}</div>` : ''}
+    ${setupLine(sig) ? `<div style="font-size:13px;color:#065f46;background:#ecfdf5;border-radius:8px;padding:10px 12px;margin-top:10px;">${setupLine(sig)} <span style="color:#9ca3af;">Educational scenario, not a recommendation.</span></div>` : ''}
   </div>`
 }
 
