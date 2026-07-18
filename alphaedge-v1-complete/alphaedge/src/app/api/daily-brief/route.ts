@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { setupLine } from '@/lib/alerts'
 
 // ── Daily market brief ────────────────────────────────────
 // Once a day (vercel.json cron), sends every active subscriber a short
@@ -15,6 +16,8 @@ const APP_URL = 'https://www.alphaedge.network'
 type SignalRow = {
   ticker: string; market: string; signal_type: string
   price: number; percent_change_24h: number | null; simple_reasoning: string | null
+  entry_low: number | null; entry_high: number | null
+  target_price: number | null; stop_loss: number | null
 }
 type HistoryRow = { ticker: string; signal_type: string; previous_type: string | null; generated_at: string }
 
@@ -58,6 +61,7 @@ function buildEmail(brief: string, signals: SignalRow[], changes: HistoryRow[]) 
     .sort((a, b) => b.percent_change_24h! - a.percent_change_24h!)
   const gainers = sorted.slice(0, 3)
   const losers = sorted.slice(-3).reverse()
+  const byTicker = new Map(signals.map(s => [s.ticker, s]))
 
   const moverRow = (s: SignalRow) => `
     <td style="padding:6px 10px;font-size:13px;color:#111827;">
@@ -67,12 +71,17 @@ function buildEmail(brief: string, signals: SignalRow[], changes: HistoryRow[]) 
       </span>
     </td>`
 
-  const changeLines = changes.slice(0, 6).map(c => `
+  const changeLines = changes.slice(0, 6).map(c => {
+    const current = byTicker.get(c.ticker)
+    const setup = current ? setupLine(current) : null
+    return `
     <div style="font-size:13px;color:#374151;margin-top:6px;">
       <strong>${c.ticker}</strong> is now
       <span style="color:${COLORS[c.signal_type] ?? '#d97706'};font-weight:700;">${LABELS[c.signal_type]}</span>
       ${c.previous_type ? `<span style="color:#6b7280;">(was ${LABELS[c.previous_type]})</span>` : ''}
-    </div>`).join('')
+      ${setup ? `<div style="font-size:12px;color:#065f46;background:#ecfdf5;border-radius:6px;padding:8px 10px;margin-top:5px;">${setup}</div>` : ''}
+    </div>`
+  }).join('')
 
   const html = `
 <!doctype html>
@@ -136,7 +145,7 @@ export async function GET(req: NextRequest) {
   // Content inputs
   const { data: signals } = await supabase
     .from('signals')
-    .select('ticker, market, signal_type, price, percent_change_24h, simple_reasoning')
+    .select('ticker, market, signal_type, price, percent_change_24h, simple_reasoning, entry_low, entry_high, target_price, stop_loss')
     .gt('expires_at', new Date().toISOString())
   if (!signals || signals.length === 0) return NextResponse.json({ sent: 0, skipped: 'no cached signals' })
 
