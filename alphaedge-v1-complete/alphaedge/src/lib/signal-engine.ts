@@ -31,6 +31,7 @@ export interface GeneratedSignal {
   chart_closes: { t: number; c: number; m?: number }[]
   percent_change_24h: number | null
   ath_change_pct: number | null
+  ath_price: number | null
 }
 
 // ── Trader profile → prompt description ──────────────────
@@ -162,6 +163,7 @@ ${snapshot.ohlcv.slice(-5).map(c =>
     chart_closes: buildChartSeries(snapshot),
     percent_change_24h: snapshot.percentChange24h ?? null,
     ath_change_pct: snapshot.athChangePct ?? null,
+    ath_price: snapshot.athPrice ?? null,
   }
 }
 

@@ -30,6 +30,8 @@ export interface MarketSnapshot {
   marketCap?: number
   // Crypto only: % distance from all-time high (negative = below ATH)
   athChangePct?: number | null
+  // Crypto only: exact all-time-high price (USD), straight from the source
+  athPrice?: number | null
 }
 
 // ── Technical indicators ──────────────────────────────────
@@ -138,6 +140,7 @@ export async function fetchCryptoSnapshot(ticker: string): Promise<MarketSnapsho
     vwap: null,
     marketCap: md.market_cap?.usd ?? 0,
     athChangePct: md.ath_change_percentage?.usd ?? null,
+    athPrice: md.ath?.usd ?? null,
   }
 }
 
