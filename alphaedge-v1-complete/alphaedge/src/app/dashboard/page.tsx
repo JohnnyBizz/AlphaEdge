@@ -21,6 +21,7 @@ type Signal = {
   chart_closes: { t: number; c: number; m?: number }[] | null
   percent_change_24h: number | null
   ath_change_pct: number | null
+  ath_price: number | null
 }
 
 type Filter = 'all' | 'buy' | 'sell'
@@ -628,7 +629,7 @@ export default function DashboardPage() {
                             {Math.abs(signal.ath_change_pct).toFixed(0)}% below record
                           </div>
                           <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>
-                            record high {formatPrice(signal.price / (1 + signal.ath_change_pct / 100))}
+                            record high {formatPrice(signal.ath_price ?? signal.price / (1 + signal.ath_change_pct / 100))}
                           </div>
                         </div>
                       )}
