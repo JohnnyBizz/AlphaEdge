@@ -213,7 +213,7 @@ function PositionsSection({ signals }: { signals: Signal[] }) {
             )
           })}
           <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
-            Position values update with each hourly analysis refresh. Informational only — not financial advice.
+            Position values update with each analysis refresh. Informational only — not financial advice.
           </p>
         </div>
       )}

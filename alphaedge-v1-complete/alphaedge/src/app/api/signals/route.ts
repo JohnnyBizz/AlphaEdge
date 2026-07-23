@@ -30,7 +30,7 @@ async function hasAnyActiveSubscriber(): Promise<boolean> {
 }
 
 export async function GET(req: NextRequest) {
-  // Hourly cron refresh (vercel.json) — no user session involved
+  // Scheduled cron refresh (every 2 hours, vercel.json) — no user session involved
   if (isCronRequest(req)) {
     if (!(await hasAnyActiveSubscriber())) {
       return NextResponse.json({ refreshed: false, skipped: 'no active subscribers' })
