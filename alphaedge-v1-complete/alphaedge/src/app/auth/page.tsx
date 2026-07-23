@@ -112,7 +112,7 @@ export default function AuthPage() {
 
           <div className="flex flex-col gap-5">
             {[
-              { icon: Zap, title: 'Fresh analysis every hour', desc: 'AI re-analyzes all tracked assets continuously' },
+              { icon: Zap, title: 'Fresh analysis around the clock', desc: 'AI re-analyzes every tracked coin throughout the day' },
               { icon: BarChart2, title: 'RSI, MACD, volume & more', desc: 'The key technical indicators, explained in plain English' },
               { icon: Clock, title: '7-day free trial', desc: 'Full access, cancel anytime, no questions asked' },
             ].map(({ icon: Icon, title, desc }) => (

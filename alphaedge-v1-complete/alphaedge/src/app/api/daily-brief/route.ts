@@ -7,7 +7,7 @@ import { setupLine } from '@/lib/alerts'
 // Once a day (vercel.json cron), sends every active subscriber a short
 // plain-English summary of the market: biggest movers, signal changes in
 // the last 24h, and an AI-written overview. Built entirely from data the
-// hourly refresh already produces — one extra AI call per day total.
+// scheduled refresh already produces — one extra AI call per day total.
 
 export const maxDuration = 120
 
