@@ -627,12 +627,15 @@ export default function DashboardPage() {
                           <div className="font-medium mt-0.5" style={{ color: 'var(--text-primary)' }}>
                             {Math.abs(signal.ath_change_pct).toFixed(0)}% below record
                           </div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>
+                            record high {formatPrice(signal.price / (1 + signal.ath_change_pct / 100))}
+                          </div>
                         </div>
                       )}
                     </div>
 
                     <div className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      Generated {new Date(signal.generated_at).toLocaleTimeString()} · Educational analysis, not advice
+                      Updated {new Date(signal.generated_at).toLocaleTimeString()} · Educational analysis, not advice
                     </div>
                   </div>
                 )}
