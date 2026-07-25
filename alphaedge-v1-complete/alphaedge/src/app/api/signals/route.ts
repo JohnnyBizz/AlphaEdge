@@ -3,6 +3,7 @@ import { createSupabaseContext } from '@/lib/supabase/context'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchAllMarketData } from '@/lib/market-data'
 import { generateAndCacheAllSignals, getTraderProfile } from '@/lib/signal-engine'
+import { getUserSubscription } from '@/lib/subscription'
 
 // Full signal generation (market data + AI analysis for ~42 assets) takes
 // ~4 minutes — ask Vercel for more than the default function duration.
@@ -44,18 +45,12 @@ export async function GET(req: NextRequest) {
   const { data: ctx, error: authError } = await createSupabaseContext()
   if (authError || !ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // 2. Subscription check (trialing counts as access)
-  const { data: sub } = await ctx.supabase
-    .from('subscriptions')
-    .select('status, current_period_end')
-    .eq('user_id', ctx.userClaims!.id)
-    .single()
+  // 2. Subscription check (trialing counts as access). Uses the shared
+  // lookup so a user holding several Stripe subscriptions — e.g. an old
+  // past_due one alongside a fresh signup — keeps access via the live one.
+  const { live } = await getUserSubscription(ctx.supabaseAdmin, ctx.userClaims!.id)
 
-  const hasAccess = (sub?.status === 'active' || sub?.status === 'trialing') &&
-    sub?.current_period_end &&
-    new Date(sub.current_period_end) > new Date()
-
-  if (!hasAccess) {
+  if (!live) {
     return NextResponse.json({ error: 'Subscription required', code: 'NO_SUBSCRIPTION' }, { status: 403 })
   }
 

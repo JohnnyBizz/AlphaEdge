@@ -13,11 +13,15 @@ export const PLANS = {
 // Creates a Stripe Checkout session. After successful payment the
 // customer is sent to /onboarding to complete their trader profile.
 export async function createCheckoutSession({
-  userId, email, plan, successUrl, cancelUrl,
+  userId, email, plan, customerId, withTrial = true, successUrl, cancelUrl,
 }: {
   userId: string
   email: string
   plan: 'weekly' | 'monthly'
+  /** Reuse this Stripe customer instead of creating another one. */
+  customerId?: string | null
+  /** The 7-day free trial is once per account — off for returning users. */
+  withTrial?: boolean
   successUrl?: string
   cancelUrl?: string
 }) {
@@ -27,10 +31,15 @@ export async function createCheckoutSession({
     mode: 'subscription',
     // No payment_method_types: Checkout automatically offers every method
     // enabled in the Stripe dashboard, localized to the customer's country.
-    customer_email: email,
+    // Passing an existing `customer` keeps one Stripe customer per account —
+    // `customer_email` alone makes Stripe mint a new customer per checkout,
+    // which scatters a user's billing history across duplicate records.
+    ...(customerId
+      ? { customer: customerId, customer_update: { address: 'auto' as const, name: 'auto' as const } }
+      : { customer_email: email }),
     line_items: [{ price: selectedPlan.priceId, quantity: 1 }],
     subscription_data: {
-      trial_period_days: 7,
+      ...(withTrial ? { trial_period_days: 7 } : {}),
       metadata: { userId, plan },
     },
     metadata: { userId, plan },
