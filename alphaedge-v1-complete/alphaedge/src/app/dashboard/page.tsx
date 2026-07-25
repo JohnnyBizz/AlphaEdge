@@ -222,6 +222,127 @@ function PositionsSection({ signals }: { signals: Signal[] }) {
   )
 }
 
+// ── Coin requests ─────────────────────────────────────────
+// Paying subscribers nominate up to 3 coins to add next. Trial users see
+// the panel in a locked state — it's one of the few concrete reasons to
+// convert, so it's worth showing rather than hiding.
+function CoinRequestsSection() {
+  const [requests, setRequests] = useState<{ id: string; coin: string }[]>([])
+  const [eligible, setEligible] = useState(false)
+  const [limit, setLimit] = useState(3)
+  const [loaded, setLoaded] = useState(false)
+  const [coin, setCoin] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/coin-requests')
+      .then(r => r.json())
+      .then(d => {
+        setRequests(d.requests ?? [])
+        setEligible(!!d.eligible)
+        if (d.limit) setLimit(d.limit)
+        setLoaded(true)
+      })
+      .catch(() => setLoaded(true))
+  }, [])
+
+  async function addCoin(e: React.FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+    const value = coin.trim()
+    if (!value) { setFormError('Enter a coin name or ticker'); return }
+    setSaving(true)
+    const res = await fetch('/api/coin-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coin: value }),
+    })
+    const d = await res.json()
+    setSaving(false)
+    if (!res.ok) { setFormError(d.error ?? 'Could not save request'); return }
+    setRequests(r => [...r, d.request])
+    setCoin('')
+  }
+
+  async function removeCoin(id: string) {
+    setRequests(r => r.filter(x => x.id !== id))
+    await fetch(`/api/coin-requests?id=${id}`, { method: 'DELETE' }).catch(() => {})
+  }
+
+  if (!loaded) return null
+  const remaining = limit - requests.length
+
+  return (
+    <div className="mb-6 rounded-xl p-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            Request a coin
+          </h2>
+          {eligible && (
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {requests.length} of {limit} used
+            </span>
+          )}
+        </div>
+      </div>
+
+      {!eligible ? (
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Requesting coins is a subscriber perk — it unlocks once your trial converts to a paid plan.
+          The most-requested coins get added first.
+        </p>
+      ) : (
+        <>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
+            Pick up to {limit} coins you&apos;d like analyzed. Every subscriber gets a say, and the
+            most-requested ones get added first.
+          </p>
+
+          {requests.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {requests.map(r => (
+                <span key={r.id}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+                  {r.coin}
+                  <button onClick={() => removeCoin(r.id)} title={`Remove ${r.coin}`}
+                    style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}>
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {remaining > 0 ? (
+            <form onSubmit={addCoin} className="flex gap-2 flex-wrap items-center">
+              <input value={coin} onChange={e => setCoin(e.target.value)} maxLength={40}
+                placeholder="e.g. Hyperliquid or HYPE"
+                className="px-3 py-1.5 rounded-lg text-xs flex-1 min-w-[180px]"
+                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+              <button type="submit" disabled={saving}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: 'var(--accent-dim)', border: 'none', color: 'var(--accent)', cursor: saving ? 'default' : 'pointer' }}>
+                {saving ? 'Adding…' : `+ Add (${remaining} left)`}
+              </button>
+            </form>
+          ) : (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              You&apos;ve used all {limit} requests. Remove one to swap it out.
+            </p>
+          )}
+
+          {formError && (
+            <p className="text-xs mt-2" style={{ color: 'var(--red)' }}>{formError}</p>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 function ConfidenceBar({ value, type }: { value: number; type: string }) {
   const color = type === 'buy' ? 'var(--accent)' : type === 'sell' ? 'var(--red)' : 'var(--amber)'
   return (
@@ -401,6 +522,9 @@ export default function DashboardPage() {
 
         {/* My Positions */}
         <PositionsSection signals={signals} />
+
+        {/* Request a coin */}
+        <CoinRequestsSection />
 
         {/* Today's biggest movers */}
         {(() => {

@@ -65,3 +65,18 @@ export const CRYPTO_ASSETS: { ticker: string; name: string; coingeckoId: string 
 export const ASSET_NAMES: Record<string, string> = Object.fromEntries(
   CRYPTO_ASSETS.map(a => [a.ticker, a.name])
 )
+
+// ── Coin-request matching ─────────────────────────────────
+// Subscribers type coin requests freehand, so "pepe", " Pepe " and "PEPE"
+// all have to collapse to one key before they can be counted or compared
+// against what's already tracked.
+export function coinKey(raw: string) {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
+// Keys for everything already analysed, by ticker *and* display name, so a
+// request for either spelling is recognised as already covered.
+export const TRACKED_COIN_KEYS: ReadonlySet<string> = new Set([
+  ...CRYPTO_ASSETS.map(a => coinKey(a.ticker)),
+  ...CRYPTO_ASSETS.map(a => coinKey(a.name)),
+])
