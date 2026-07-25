@@ -142,6 +142,10 @@ export async function GET(req: NextRequest) {
     .gt('current_period_end', new Date().toISOString())
   if (!subs || subs.length === 0) return NextResponse.json({ sent: 0, skipped: 'no active subscribers' })
 
+  // One brief per person: a user holding more than one live subscription
+  // (e.g. after re-subscribing) must not receive the email twice.
+  const recipientIds = Array.from(new Set(subs.map(s => s.user_id)))
+
   // Content inputs
   const { data: signals } = await supabase
     .from('signals')
@@ -165,9 +169,9 @@ export async function GET(req: NextRequest) {
   const subject = `Daily brief: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — markets in plain English`
 
   let sent = 0
-  for (const sub of subs) {
+  for (const userId of recipientIds) {
     try {
-      const { data: userData } = await supabase.auth.admin.getUserById(sub.user_id)
+      const { data: userData } = await supabase.auth.admin.getUserById(userId)
       const email = userData?.user?.email
       if (!email) continue
       const res = await fetch('https://api.resend.com/emails', {
@@ -184,9 +188,9 @@ export async function GET(req: NextRequest) {
       if (res.ok) sent++
       else console.error(`Daily brief failed for ${email}: ${res.status}`)
     } catch (err) {
-      console.error(`Daily brief failed for user ${sub.user_id}:`, err)
+      console.error(`Daily brief failed for user ${userId}:`, err)
     }
   }
 
-  return NextResponse.json({ sent, subscribers: subs.length })
+  return NextResponse.json({ sent, subscribers: recipientIds.length })
 }
