@@ -79,10 +79,10 @@ For each asset, return a JSON object with this exact structure:
 {
   "signal_type": "buy" | "sell" | "watch",
   "confidence": <integer 0-100>,
-  "entry_low": <number or null>,
-  "entry_high": <number or null>,
-  "target_price": <number or null>,
-  "stop_loss": <number or null>,
+  "entry_low": <number, required>,
+  "entry_high": <number, required>,
+  "target_price": <number, or null only when signal_type is not "buy">,
+  "stop_loss": <number, required>,
   "macd_signal": "bullish_crossover" | "bearish_crossover" | "bullish" | "bearish" | "neutral",
   "ai_reasoning": "<2-3 sentence analysis explaining what the indicators suggest and what to watch for>",
   "simple_summary": "<2 short sentences in plain everyday English for someone with zero trading knowledge. No jargon — never use terms like RSI, MACD, SMA, Bollinger, VWAP, histogram, or crossover. Explain what the price is doing and what the stance means in words like: the price has been climbing/falling/moving sideways, it looks expensive/cheap right now, it may be worth waiting for a dip, momentum is building/fading.>"
@@ -94,6 +94,12 @@ Signal generation guidelines:
 - WATCH: Mixed signals, consolidation, or insufficient confirmation
 - Confidence 80–100: multiple confirming indicators; 60–79: 2–3 aligned; below 60: always WATCH
 - Entry zones within 1–2% of current price; never generate BUY above 80 confidence without volume confirmation
+- entry_low, entry_high and stop_loss are ALWAYS required, including for SELL and
+  WATCH. They are reference levels, not a recommendation to trade: entry_low/high is
+  the zone worth watching (anchor it to nearby support or the lower Bollinger band),
+  and stop_loss is the level that would invalidate the setup. A deeply oversold or
+  bearish asset still has both — never return null for them because the setup looks
+  unattractive. Only target_price may be null, and only when signal_type is not "buy".
 
 Return ONLY valid JSON, no markdown, no text outside the JSON.`
 
