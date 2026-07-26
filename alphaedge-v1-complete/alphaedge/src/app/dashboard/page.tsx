@@ -693,7 +693,17 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    {/* Plain-English setup line: what to actually do with the levels */}
+                    {/* Plain-English setup line: what to actually do with the levels.
+                        When the analysis returns no levels at all, say so rather than
+                        rendering nothing — a silent gap reads as broken data. */}
+                    {!(signal.entry_low && signal.entry_high && signal.stop_loss) && (
+                      <div className="text-xs leading-relaxed p-2.5 rounded-lg mb-3"
+                        style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                        <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>The setup: </span>
+                        this one has no clearly defined levels right now — the technicals haven&apos;t
+                        marked out a zone worth watching. The read above still applies.
+                      </div>
+                    )}
                     {signal.entry_low && signal.entry_high && signal.stop_loss && (
                       <div className="text-xs leading-relaxed p-2.5 rounded-lg mb-3"
                         style={{ background: 'var(--accent-dim)', border: '1px solid rgba(0,229,160,0.2)', color: 'var(--text-secondary)' }}>
