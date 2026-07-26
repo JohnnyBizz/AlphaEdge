@@ -222,6 +222,74 @@ function PositionsSection({ signals }: { signals: Signal[] }) {
   )
 }
 
+// ── What changed ──────────────────────────────────────────
+// The stance a coin carries matters less than the fact it just moved. On
+// a day where 45 of 46 assets read NEUTRAL, this is the only part of the
+// board that varies — so it goes first.
+const STANCE: Record<string, { label: string; color: string }> = {
+  buy:   { label: 'BULLISH', color: 'var(--accent)' },
+  sell:  { label: 'BEARISH', color: 'var(--red)' },
+  watch: { label: 'NEUTRAL', color: '#f0b23c' },
+}
+
+type SignalChange = {
+  ticker: string; signal_type: string; previous_type: string
+  price_at_change: number; current_price: number | null
+  change_pct: number | null; generated_at: string
+}
+
+function WhatChangedSection() {
+  const [changes, setChanges] = useState<SignalChange[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/signal-changes')
+      .then(r => (r.ok ? r.json() : { changes: [] }))
+      .then(d => { setChanges(d.changes ?? []); setLoaded(true) })
+      .catch(() => setLoaded(true))
+  }, [])
+
+  if (!loaded) return null
+
+  return (
+    <div className="mb-6 rounded-xl p-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      <div className="flex items-center gap-3 mb-3 flex-wrap">
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>What changed</h2>
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>last 24 hours</span>
+      </div>
+
+      {changes.length === 0 ? (
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          No stance changes in the last 24 hours — the board is holding steady. That&apos;s
+          normal on quiet days, and usually more common than not.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {changes.map(c => {
+            const from = STANCE[c.previous_type] ?? STANCE.watch
+            const to = STANCE[c.signal_type] ?? STANCE.watch
+            return (
+              <div key={c.ticker} className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="font-semibold" style={{ color: 'var(--text-primary)', minWidth: 54 }}>
+                  {c.ticker}
+                </span>
+                <span style={{ color: from.color, opacity: 0.65 }}>{from.label}</span>
+                <span style={{ color: 'var(--text-muted)' }}>→</span>
+                <span className="font-semibold" style={{ color: to.color }}>{to.label}</span>
+                {c.change_pct != null && (
+                  <span className="ml-auto" style={{ color: c.change_pct >= 0 ? 'var(--accent)' : 'var(--red)' }}>
+                    {c.change_pct >= 0 ? '+' : ''}{c.change_pct.toFixed(1)}% since
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Coin requests ─────────────────────────────────────────
 // Paying subscribers nominate up to 3 coins to add next. Trial users see
 // the panel in a locked state — it's one of the few concrete reasons to
@@ -374,7 +442,11 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [filter, setFilter] = useState<Filter>('all')
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  // When the analysis itself was generated — not when the browser last
+  // fetched it. The page refetches every 15 minutes but signals only
+  // regenerate every 2 hours, so showing the fetch time would overstate
+  // how fresh the numbers are.
+  const [analysisRunAt, setAnalysisRunAt] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [billingLoading, setBillingLoading] = useState(false)
 
@@ -388,8 +460,13 @@ export default function DashboardPage() {
       if (res.status === 403) { router.push('/subscribe'); return }
       if (!res.ok) throw new Error('Failed to fetch analysis')
       const data = await res.json()
-      setSignals(data.signals ?? [])
-      setLastUpdated(new Date())
+      const rows: Signal[] = data.signals ?? []
+      setSignals(rows)
+      const newest = rows.reduce<string | null>(
+        (max, s) => (s.generated_at && (!max || s.generated_at > max) ? s.generated_at : max),
+        null,
+      )
+      setAnalysisRunAt(newest ? new Date(newest) : null)
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -457,9 +534,9 @@ export default function DashboardPage() {
               style={{ background: 'var(--accent)', animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
             Live
           </div>
-          {lastUpdated && (
+          {analysisRunAt && (
             <span className="text-xs hidden md:block" style={{ color: 'var(--text-muted)' }}>
-              Updated {lastUpdated.toLocaleTimeString()}
+              Analysis from {analysisRunAt.toLocaleTimeString()}
             </span>
           )}
           <Link href="/track-record" title="See our past calls and how they played out"
@@ -519,6 +596,9 @@ export default function DashboardPage() {
             sub={`${buys} bullish vs ${sells} bearish`}
             color={bullish ? 'var(--accent)' : 'var(--red)'} />
         </div>
+
+        {/* What changed in the last 24h */}
+        <WhatChangedSection />
 
         {/* My Positions */}
         <PositionsSection signals={signals} />
