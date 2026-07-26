@@ -81,7 +81,7 @@ For each asset, return a JSON object with this exact structure:
   "confidence": <integer 0-100>,
   "entry_low": <number, required>,
   "entry_high": <number, required>,
-  "target_price": <number, or null only when signal_type is not "buy">,
+  "target_price": <number, required — the next resistance level above the current price>,
   "stop_loss": <number, required>,
   "macd_signal": "bullish_crossover" | "bearish_crossover" | "bullish" | "bearish" | "neutral",
   "ai_reasoning": "<2-3 sentence analysis explaining what the indicators suggest and what to watch for>",
@@ -94,12 +94,14 @@ Signal generation guidelines:
 - WATCH: Mixed signals, consolidation, or insufficient confirmation
 - Confidence 80–100: multiple confirming indicators; 60–79: 2–3 aligned; below 60: always WATCH
 - Entry zones within 1–2% of current price; never generate BUY above 80 confidence without volume confirmation
-- entry_low, entry_high and stop_loss are ALWAYS required, including for SELL and
-  WATCH. They are reference levels, not a recommendation to trade: entry_low/high is
-  the zone worth watching (anchor it to nearby support or the lower Bollinger band),
-  and stop_loss is the level that would invalidate the setup. A deeply oversold or
-  bearish asset still has both — never return null for them because the setup looks
-  unattractive. Only target_price may be null, and only when signal_type is not "buy".
+- All four price levels are ALWAYS required, including for SELL and WATCH. Never
+  return null for any of them because a setup looks unattractive — they are reference
+  levels describing the chart, not a recommendation to trade:
+    · entry_low/entry_high — the zone worth watching, anchored to nearby support or
+      the lower Bollinger band
+    · target_price — the next resistance level above the current price
+    · stop_loss — the level that would invalidate the setup
+  A deeply oversold, bearish or beaten-down asset still has all four.
 
 Return ONLY valid JSON, no markdown, no text outside the JSON.`
 
