@@ -15,6 +15,10 @@ const LABELS: Record<string, { text: string; color: string }> = {
 
 const APP_URL = 'https://www.alphaedge.network'
 
+// A ticker that already produced an alert this recently doesn't produce
+// another, however many times its stance moves in between.
+const ALERT_COOLDOWN_HOURS = 24
+
 type PositionRow = { user_id: string; ticker: string; quantity: number; entry_price: number }
 
 function fmt(p: number) {
@@ -126,13 +130,28 @@ export async function sendSignalChangeAlerts(
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return // alerts disabled until the key is configured
 
-  const changed = fresh.filter(s => {
+  const candidates = fresh.filter(s => {
     const prev = previous.get(s.ticker)
     return prev !== undefined && prev !== s.signal_type
   })
-  if (changed.length === 0) return
+  if (candidates.length === 0) return
 
   const supabase = createAdminClient()
+
+  // Don't email the same ticker twice in a day. Stance stickiness lives in
+  // the prompt, but sampling variance can still round-trip an asset, and a
+  // holder pinged for a change and then its reversal loses trust in every
+  // alert after it. The dashboard still shows the current stance either way.
+  const since = new Date(Date.now() - ALERT_COOLDOWN_HOURS * 60 * 60 * 1000).toISOString()
+  const { data: recent } = await supabase
+    .from('signal_history')
+    .select('ticker')
+    .in('ticker', candidates.map(c => c.ticker))
+    .gt('generated_at', since)
+  const alertedRecently = new Set((recent ?? []).map(r => r.ticker as string))
+
+  const changed = candidates.filter(c => !alertedRecently.has(c.ticker))
+  if (changed.length === 0) return
   const { data: positions } = await supabase
     .from('positions')
     .select('user_id, ticker, quantity, entry_price')

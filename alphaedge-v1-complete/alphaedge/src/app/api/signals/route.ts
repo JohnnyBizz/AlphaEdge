@@ -20,6 +20,22 @@ function isCronRequest(req: NextRequest) {
 // skip it entirely when there is no active or trialing subscriber to serve.
 // The user-facing flow below still generates on demand if the cache is
 // empty, so the first subscriber after a quiet period is never locked out.
+// An on-demand generation (a user hitting an empty cache) can land minutes
+// before the cron fires, and regenerating that soon re-rolls every stance
+// against an unchanged chart — ETH round-tripped BUY→WATCH in 16 minutes
+// that way. If the cache was built very recently, let it stand.
+const MIN_REGENERATE_MINUTES = 90
+
+async function cacheIsRecent(): Promise<boolean> {
+  const supabase = createAdminClient()
+  const cutoff = new Date(Date.now() - MIN_REGENERATE_MINUTES * 60 * 1000).toISOString()
+  const { count } = await supabase
+    .from('signals')
+    .select('*', { count: 'exact', head: true })
+    .gt('generated_at', cutoff)
+  return (count ?? 0) > 0
+}
+
 async function hasAnyActiveSubscriber(): Promise<boolean> {
   const supabase = createAdminClient()
   const { count } = await supabase
@@ -35,6 +51,9 @@ export async function GET(req: NextRequest) {
   if (isCronRequest(req)) {
     if (!(await hasAnyActiveSubscriber())) {
       return NextResponse.json({ refreshed: false, skipped: 'no active subscribers' })
+    }
+    if (await cacheIsRecent()) {
+      return NextResponse.json({ refreshed: false, skipped: 'analysis still recent' })
     }
     const snapshots = await fetchAllMarketData()
     const signals = await generateAndCacheAllSignals(snapshots, null)

@@ -107,9 +107,38 @@ Return ONLY valid JSON, no markdown, no text outside the JSON.`
 
 // ── Signal generation ─────────────────────────────────────
 
+// ── Stance stickiness ─────────────────────────────────────
+// Each run re-analyses from scratch, so an asset sitting near a decision
+// boundary would flip on sampling noise alone — UNI went BUY → WATCH →
+// BUY across three runs at an identical $3.66, and ETH round-tripped in
+// 16 minutes on a 0.03% move. A stance change is presented to users as a
+// meaningful event (it drives the alert emails), so it needs a dead band:
+// enter a directional stance at high confidence, leave it only once
+// conviction has genuinely gone, and hold in between.
+const ENTER_DIRECTIONAL = 68
+const EXIT_DIRECTIONAL = 55
+
+function stanceSection(previous: string | undefined): string {
+  if (!previous) return ''
+  const label = previous === 'buy' ? 'BUY' : previous === 'sell' ? 'SELL' : 'WATCH'
+  return `
+
+CURRENT STANCE: this asset is currently ${label}.
+Stance stability matters — users are notified when it changes, so a change must
+mean something. Apply these rules:
+- Keep the current stance unless the technicals clearly justify a change.
+- Never change stance on a marginal confidence difference, or when the indicator
+  values are essentially unchanged from the levels described above.
+- To move WATCH → BUY or WATCH → SELL you need at least ${ENTER_DIRECTIONAL} confidence.
+- To leave BUY or SELL back to WATCH, conviction must have genuinely deteriorated
+  (below ${EXIT_DIRECTIONAL}) — not merely softened.
+- If you are between those thresholds, keep ${label} and say what you're waiting for.`
+}
+
 export async function generateSignalForAsset(
   snapshot: MarketSnapshot,
-  traderProfile: TraderProfile | null = null
+  traderProfile: TraderProfile | null = null,
+  previousStance?: string
 ): Promise<GeneratedSignal> {
   const volumeRatio = snapshot.volumeAvg20d > 0
     ? parseFloat((snapshot.volume24h / snapshot.volumeAvg20d).toFixed(2))
@@ -138,7 +167,7 @@ ${snapshot.vwap ? `VWAP: $${snapshot.vwap}` : ''}
 RECENT PRICE ACTION (last 5 closes):
 ${snapshot.ohlcv.slice(-5).map(c =>
   `  ${new Date(c.timestamp).toLocaleDateString()}: O:${c.open} H:${c.high} L:${c.low} C:${c.close}`
-).join('\n')}`
+).join('\n')}${stanceSection(previousStance)}`
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-5',
@@ -200,20 +229,8 @@ export async function generateAndCacheAllSignals(
   const supabase = createAdminClient()
   const results: GeneratedSignal[] = []
 
-  for (let i = 0; i < snapshots.length; i += 4) {
-    const batch = snapshots.slice(i, i + 4)
-    const batchResult = await Promise.allSettled(
-      batch.map(s => generateSignalForAsset(s, traderProfile))
-    )
-    batchResult.forEach(r => {
-      if (r.status === 'fulfilled') results.push(r.value)
-      else console.error('Signal generation failed:', r.reason)
-    })
-    if (i + 4 < snapshots.length) await new Promise(r => setTimeout(r, 1000))
-  }
-
-  // Snapshot the outgoing signals before replacing them, so we can detect
-  // per-ticker signal changes and email affected position holders.
+  // Read the outgoing stances first — they feed the stickiness rules in the
+  // prompt, and are reused afterwards to detect which tickers actually changed.
   const { data: prevRows } = await supabase
     .from('signals')
     .select('ticker, signal_type')
@@ -221,6 +238,18 @@ export async function generateAndCacheAllSignals(
   const previousByTicker = new Map<string, string>(
     (prevRows ?? []).map(r => [r.ticker as string, r.signal_type as string])
   )
+
+  for (let i = 0; i < snapshots.length; i += 4) {
+    const batch = snapshots.slice(i, i + 4)
+    const batchResult = await Promise.allSettled(
+      batch.map(s => generateSignalForAsset(s, traderProfile, previousByTicker.get(s.ticker)))
+    )
+    batchResult.forEach(r => {
+      if (r.status === 'fulfilled') results.push(r.value)
+      else console.error('Signal generation failed:', r.reason)
+    })
+    if (i + 4 < snapshots.length) await new Promise(r => setTimeout(r, 1000))
+  }
 
   await supabase.from('signals').delete().lt('expires_at', new Date().toISOString())
 
@@ -245,6 +274,15 @@ export async function generateAndCacheAllSignals(
 
   if (error) console.error('Failed to cache signals:', error)
 
+  // Alerts run before the history write on purpose: the alert cooldown asks
+  // signal_history "has this ticker changed recently?", and recording this
+  // run's flips first would make every ticker look like its own precedent.
+  try {
+    await sendSignalChangeAlerts(previousByTicker, results)
+  } catch (err) {
+    console.error('Signal-change alerts failed:', err)
+  }
+
   // Permanently record signal flips (and first sightings) for the public
   // track-record page. Append-only; never blocks signal generation.
   try {
@@ -267,11 +305,6 @@ export async function generateAndCacheAllSignals(
     console.error('Signal history recording failed:', err)
   }
 
-  try {
-    await sendSignalChangeAlerts(previousByTicker, results)
-  } catch (err) {
-    console.error('Signal-change alerts failed:', err)
-  }
   return results
 }
 
