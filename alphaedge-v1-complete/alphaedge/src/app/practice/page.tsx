@@ -17,6 +17,21 @@ const STANCE: Record<string, { label: string; color: string }> = {
   watch: { label: 'NEUTRAL', color: 'var(--amber)' },
 }
 
+// Enough of each signal to decide a trade without leaving the page.
+type TradeableSignal = {
+  ticker: string
+  price: number
+  signal_type: string
+  percent_change_24h: number | null
+  entry_low: number | null
+  entry_high: number | null
+  target_price: number | null
+  stop_loss: number | null
+  rsi: number | null
+  ath_change_pct: number | null
+  simple_reasoning: string | null
+}
+
 function money(v: number) {
   return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
@@ -34,7 +49,7 @@ export default function PracticePage() {
   const router = useRouter()
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null)
   const [trades, setTrades] = useState<PaperTrade[]>([])
-  const [prices, setPrices] = useState<{ ticker: string; price: number; signal_type: string }[]>([])
+  const [prices, setPrices] = useState<TradeableSignal[]>([])
   const [ticker, setTicker] = useState('BTC')
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const [amount, setAmount] = useState('')
@@ -59,14 +74,27 @@ export default function PracticePage() {
       .then(r => (r.ok ? r.json() : { signals: [] }))
       .then(d => setPrices(
         (d.signals ?? [])
-          .map((s: any) => ({ ticker: s.ticker, price: Number(s.price), signal_type: s.signal_type }))
-          .sort((a: any, b: any) => a.ticker.localeCompare(b.ticker)),
+          .map((s: any): TradeableSignal => ({
+            ticker: s.ticker,
+            price: Number(s.price),
+            signal_type: s.signal_type,
+            percent_change_24h: s.percent_change_24h == null ? null : Number(s.percent_change_24h),
+            entry_low: s.entry_low == null ? null : Number(s.entry_low),
+            entry_high: s.entry_high == null ? null : Number(s.entry_high),
+            target_price: s.target_price == null ? null : Number(s.target_price),
+            stop_loss: s.stop_loss == null ? null : Number(s.stop_loss),
+            rsi: s.rsi == null ? null : Number(s.rsi),
+            ath_change_pct: s.ath_change_pct == null ? null : Number(s.ath_change_pct),
+            simple_reasoning: s.simple_reasoning ?? null,
+          }))
+          .sort((a: TradeableSignal, b: TradeableSignal) => a.ticker.localeCompare(b.ticker)),
       ))
       .catch(() => {})
   }, [load])
 
-  const livePrice = prices.find(p => p.ticker === ticker)?.price ?? null
-  const liveStance = prices.find(p => p.ticker === ticker)?.signal_type ?? null
+  const selected = prices.find(p => p.ticker === ticker) ?? null
+  const livePrice = selected?.price ?? null
+  const liveStance = selected?.signal_type ?? null
   const held = portfolio?.holdings.find(h => h.ticker === ticker)?.quantity ?? 0
   const estimate = livePrice && Number(amount) > 0 ? Number(amount) * livePrice : null
 
@@ -204,6 +232,77 @@ export default function PracticePage() {
 
           {err && <p className="text-xs mt-2" style={{ color: 'var(--red)' }}>{err}</p>}
         </form>
+
+        {/* What AlphaEdge currently reads on the selected coin, so a decision
+            can be made here rather than by flipping back to the dashboard. */}
+        {selected && (
+          <div className="p-4 rounded-xl mb-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <span className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
+                {selected.ticker}
+              </span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {ASSET_NAMES[selected.ticker] ?? 'Cryptocurrency'}
+              </span>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded"
+                style={{ background: 'var(--bg-secondary)', color: STANCE[selected.signal_type]?.color }}>
+                {STANCE[selected.signal_type]?.label}
+              </span>
+              {selected.percent_change_24h != null && (
+                <span className="text-xs ml-auto"
+                  style={{ color: selected.percent_change_24h >= 0 ? 'var(--accent)' : 'var(--red)' }}>
+                  {selected.percent_change_24h >= 0 ? '+' : ''}{selected.percent_change_24h.toFixed(2)}% today
+                </span>
+              )}
+            </div>
+
+            {selected.simple_reasoning && (
+              <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--text-secondary)' }}>
+                {selected.simple_reasoning}
+              </p>
+            )}
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+              {selected.entry_low != null && selected.entry_high != null && (
+                <div className="p-2 rounded-lg" style={{ background: 'var(--bg-secondary)' }}>
+                  <div style={{ color: 'var(--text-muted)' }}>Buy-in zone</div>
+                  <div className="font-medium mt-0.5" style={{ color: 'var(--text-primary)' }}>
+                    {price(selected.entry_low)} – {price(selected.entry_high)}
+                  </div>
+                </div>
+              )}
+              {selected.target_price != null && (
+                <div className="p-2 rounded-lg" style={{ background: 'var(--bg-secondary)' }}>
+                  <div style={{ color: 'var(--text-muted)' }}>Price target</div>
+                  <div className="font-medium mt-0.5" style={{ color: 'var(--accent)' }}>
+                    {price(selected.target_price)}
+                  </div>
+                </div>
+              )}
+              {selected.stop_loss != null && (
+                <div className="p-2 rounded-lg" style={{ background: 'var(--bg-secondary)' }}>
+                  <div style={{ color: 'var(--text-muted)' }}>Get-out level</div>
+                  <div className="font-medium mt-0.5" style={{ color: 'var(--red)' }}>
+                    {price(selected.stop_loss)}
+                  </div>
+                </div>
+              )}
+              {selected.ath_change_pct != null && (
+                <div className="p-2 rounded-lg" style={{ background: 'var(--bg-secondary)' }}>
+                  <div style={{ color: 'var(--text-muted)' }}>vs record high</div>
+                  <div className="font-medium mt-0.5" style={{ color: 'var(--text-primary)' }}>
+                    {Math.abs(selected.ath_change_pct).toFixed(0)}% below
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
+              Educational analysis, not advice — and practising against it is the point. If you
+              disagree with this read, take the other side and see what happens.
+            </p>
+          </div>
+        )}
 
         {/* Holdings */}
         <div className="p-4 rounded-xl mb-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>

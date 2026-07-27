@@ -47,10 +47,13 @@ function describeProfile(p: TraderProfile): string {
     moderate: '10–20% profit targets per trade (solid upside with manageable risk)',
     home_run: '30%+ profit targets per trade (explosive moves, willing to wait for the right setup)',
   }
+  // Stop ranges match what crypto actually offers: levels anchor to real
+  // support, which across a live board sat 3–22% away with a median of 8%.
+  // The old 2–3% / 4–5% / 6–10% tiers described equities, not this market.
   const riskMap = {
-    conservative: 'conservative risk management: tight stop losses of 2–3%, only setups with 80%+ confidence',
-    balanced:     'balanced risk management: standard stop losses of 4–5%, mix of safe and opportunistic analysis',
-    aggressive:   'aggressive risk management: wider stop losses of 6–10%, higher-risk/higher-reward setups acceptable',
+    conservative: 'conservative risk management: tighter stop losses within ~6%, only the cleanest setups',
+    balanced:     'balanced risk management: standard stop losses within ~10%, mix of safe and opportunistic analysis',
+    aggressive:   'aggressive risk management: wider stop losses up to ~20%, higher-risk/higher-reward setups acceptable',
   }
   return `
 TRADER PROFILE:
@@ -64,8 +67,8 @@ ${p.trade_style === 'swing'    ? '- Favor daily chart setups, MACD crossovers, a
 ${p.trade_style === 'position' ? '- Favor weekly trends and macro support levels.' : ''}
 ${p.profit_target === 'quick'    ? '- Set conservative targets close to current price. Only flag high-confidence (80%+) setups.' : ''}
 ${p.profit_target === 'home_run' ? '- Set ambitious targets using Fibonacci extensions. 60%+ confidence acceptable.' : ''}
-${p.risk_tolerance === 'conservative' ? '- Only flag BUY analysis with 3+ confirming indicators. Stop loss within 3% of entry.' : ''}
-${p.risk_tolerance === 'aggressive'   ? '- Accept more risk for bigger upside. Stop loss can be 6–10% below entry.' : ''}
+${p.risk_tolerance === 'conservative' ? '- Only flag BUY analysis with 3+ confirming indicators. Prefer a stop within ~6% of entry, anchored to real support.' : ''}
+${p.risk_tolerance === 'aggressive'   ? '- Accept more risk for bigger upside. Stop can sit up to ~20% below entry.' : ''}
   `.trim()
 }
 

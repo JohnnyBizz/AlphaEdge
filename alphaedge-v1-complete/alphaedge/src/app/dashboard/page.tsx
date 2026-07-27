@@ -8,6 +8,10 @@ import SignalChart from '@/components/SignalChart'
 import GlossaryText from '@/components/GlossaryText'
 import { ASSET_NAMES } from '@/lib/assets'
 import {
+  fitsProfile, sortSignals, defaultSortFor, zoneDistancePct,
+  SORT_LABELS, type SortKey, type TraderProfile,
+} from '@/lib/fit'
+import {
   TrendingUp, RefreshCw, LogOut, BarChart2, Bitcoin, Eye, Settings, CreditCard, BookOpen, History, Wallet,
 } from 'lucide-react'
 
@@ -449,6 +453,10 @@ export default function DashboardPage() {
   const [analysisRunAt, setAnalysisRunAt] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [billingLoading, setBillingLoading] = useState(false)
+  // The onboarding answers, used to rank and tag the shared analysis.
+  const [profile, setProfile] = useState<TraderProfile | null>(null)
+  const [sort, setSort] = useState<SortKey>('zone')
+  const [sortTouched, setSortTouched] = useState(false)
 
   const fetchSignals = useCallback(async (force = false) => {
     force ? setRefreshing(true) : setLoading(true)
@@ -482,6 +490,22 @@ export default function DashboardPage() {
     })
   }, [supabase, router, fetchSignals])
 
+  // Load the onboarding profile once, and open the board on the view that
+  // suits their horizon — unless they've already chosen a sort themselves.
+  useEffect(() => {
+    fetch('/api/profile')
+      .then(r => (r.ok ? r.json() : { profile: null }))
+      .then(d => {
+        const p: TraderProfile | null = d.profile ?? null
+        setProfile(p)
+        if (p) setSort(prev => (sortTouched ? prev : defaultSortFor(p)))
+      })
+      .catch(() => {})
+    // sortTouched intentionally omitted: this should run once, and reading
+    // it through the setter callback keeps a later manual choice safe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Auto-refresh every 15 minutes
   useEffect(() => {
     const interval = setInterval(() => fetchSignals(true), 15 * 60 * 1000)
@@ -506,10 +530,17 @@ export default function DashboardPage() {
     setBillingLoading(false)
   }
 
-  const filtered = signals.filter(s => {
-    if (filter === 'all') return true
-    return s.signal_type === filter
-  })
+  const fitByTicker = new Map(signals.map(s => [s.ticker, fitsProfile(s, profile)]))
+  const fitCount = Array.from(fitByTicker.values()).filter(f => f.fits).length
+
+  const filtered = sortSignals(
+    signals.filter(s => {
+      if (filter === 'all') return true
+      return s.signal_type === filter
+    }),
+    sort,
+    profile,
+  )
 
   const buys = signals.filter(s => s.signal_type === 'buy').length
   const sells = signals.filter(s => s.signal_type === 'sell').length
@@ -640,8 +671,10 @@ export default function DashboardPage() {
           )
         })()}
 
-        {/* Filter pills */}
-        <div className="flex gap-2 mb-5 flex-wrap">
+        {/* Filter pills + ordering. On a day when nearly every asset reads
+            NEUTRAL, stance tells the reader nothing — what varies is how
+            close each one sits to the level it's been telling them to watch. */}
+        <div className="flex gap-2 mb-5 flex-wrap items-center">
           {([
             { key: 'all', label: 'All' },
             { key: 'buy', label: 'Bullish' },
@@ -658,7 +691,26 @@ export default function DashboardPage() {
               {f.label}
             </button>
           ))}
+
+          <select value={sort} onChange={e => { setSort(e.target.value as SortKey); setSortTouched(true) }}
+            title="Order the board"
+            className="ml-auto px-3 py-1.5 rounded-full text-xs"
+            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+            {(Object.keys(SORT_LABELS) as SortKey[]).map(k => (
+              <option key={k} value={k}>{SORT_LABELS[k]}</option>
+            ))}
+          </select>
         </div>
+
+        {profile && sort === 'profile' && (
+          <div className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+            Ordered by how closely each setup matches your{' '}
+            <Link href="/onboarding" style={{ color: 'var(--accent)' }}>trading profile</Link>
+            {fitCount > 0
+              ? <> — {fitCount} {fitCount === 1 ? 'setup fits' : 'setups fit'} it exactly today.</>
+              : <> — nothing fits it exactly today, so the closest are first.</>}
+          </div>
+        )}
 
         {/* Error state */}
         {error && (
@@ -700,8 +752,32 @@ export default function DashboardPage() {
                       {ASSET_NAMES[signal.ticker] ?? 'Cryptocurrency'}
                     </div>
                   </div>
-                  <SignalBadge type={signal.signal_type} />
+                  <div className="flex items-center gap-1.5">
+                    {fitByTicker.get(signal.ticker)?.fits && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded"
+                        title={fitByTicker.get(signal.ticker)!.reasons.join(' · ')}
+                        style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+                        FITS YOU
+                      </span>
+                    )}
+                    <SignalBadge type={signal.signal_type} />
+                  </div>
                 </div>
+
+                {/* The card has always named a zone to watch; this says how
+                    far away it currently is, which is the bit that moves. */}
+                {(() => {
+                  const d = zoneDistancePct(signal)
+                  if (d == null) return null
+                  return (
+                    <div className="text-xs mb-2"
+                      style={{ color: d === 0 ? 'var(--accent)' : 'var(--text-muted)' }}>
+                      {d === 0
+                        ? '● In its buy-in zone now'
+                        : `${d.toFixed(1)}% from its buy-in zone`}
+                    </div>
+                  )
+                })()}
 
                 <div className="flex items-baseline gap-2 mb-3">
                   <span className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
