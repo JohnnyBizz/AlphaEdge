@@ -114,9 +114,9 @@ function StepProfitTarget({ value, onChange }: { value: ProfitTarget | null; onC
 
 function StepRiskTolerance({ value, onChange }: { value: RiskTolerance | null; onChange: (v: RiskTolerance) => void }) {
   const options: { key: RiskTolerance; icon: React.ElementType; color: string; title: string; subtitle: string }[] = [
-    { key: 'conservative', icon: Shield,    color: '#00e5a0', title: 'Conservative',  subtitle: 'Tight stop losses (2–3%). Only the cleanest setups. Capital preservation first.' },
-    { key: 'balanced',     icon: Target,    color: '#7b7bff', title: 'Balanced',       subtitle: 'Standard stops (4–5%). Mix of safe and opportunistic plays.' },
-    { key: 'aggressive',   icon: Flame,     color: '#f04a4a', title: 'Aggressive',     subtitle: 'Wider stops (6–10%). High-upside setups even with more noise. Risk on.' },
+    { key: 'conservative', icon: Shield,    color: '#00e5a0', title: 'Conservative',  subtitle: 'Tighter stops (up to 6%). Only the cleanest setups. Capital preservation first.' },
+    { key: 'balanced',     icon: Target,    color: '#7b7bff', title: 'Balanced',       subtitle: 'Standard stops (up to 10%). Mix of safe and opportunistic plays.' },
+    { key: 'aggressive',   icon: Flame,     color: '#f04a4a', title: 'Aggressive',     subtitle: 'Wide stops (up to 20%). High-upside setups even with more noise. Risk on.' },
   ]
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

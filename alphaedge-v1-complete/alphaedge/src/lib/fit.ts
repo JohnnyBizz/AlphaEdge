@@ -34,11 +34,16 @@ const TARGET_BANDS: Record<TraderProfile['profit_target'], [number, number]> = {
   home_run: [30, Infinity],
 }
 
-// The stop distances quoted alongside each risk setting.
+// Stop distances, calibrated to what this asset class actually produces.
+// Stops anchor to real support levels, and across a live board those ran
+// 3.0%–21.8% with a median of 8% — so the original 2–3%/4–5%/6–10% tiers
+// matched almost nothing, and conservative matched nothing at all. These
+// tiers track the observed quartiles (p25 ≈ 5.6%, p75 ≈ 10%), and the
+// onboarding copy quotes the same numbers.
 const MAX_STOP_DISTANCE: Record<TraderProfile['risk_tolerance'], number> = {
-  conservative: 3,
-  balanced:     5,
-  aggressive:   10,
+  conservative: 6,
+  balanced:     10,
+  aggressive:   20,
 }
 
 // Confidence deliberately plays no part in the match. The prompt describes
@@ -90,8 +95,12 @@ export function fitsProfile(s: RankableSignal, p: TraderProfile | null): Fit {
   const stop = stopDistancePct(s)
   const [minTarget, maxTarget] = TARGET_BANDS[p.profit_target]
 
-  const targetOk = up != null && up >= minTarget && up <= maxTarget
-  const stopOk = stop != null && stop > 0 && stop <= MAX_STOP_DISTANCE[p.risk_tolerance]
+  // Tolerance because these are derived by division: a stop sitting exactly
+  // on a tier boundary computes as 6.000000000000005 and would otherwise be
+  // excluded from the tier it defines.
+  const EPS = 1e-9
+  const targetOk = up != null && up >= minTarget - EPS && up <= maxTarget + EPS
+  const stopOk = stop != null && stop > 0 && stop <= MAX_STOP_DISTANCE[p.risk_tolerance] + EPS
 
   if (targetOk) reasons.push(`${up!.toFixed(0)}% to target matches your ${labelTarget(p.profit_target)} goal`)
   if (stopOk) reasons.push(`get-out level is ${stop!.toFixed(1)}% away, inside your risk setting`)
