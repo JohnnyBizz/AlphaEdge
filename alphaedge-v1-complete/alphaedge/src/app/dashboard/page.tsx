@@ -545,7 +545,32 @@ export default function DashboardPage() {
   const buys = signals.filter(s => s.signal_type === 'buy').length
   const sells = signals.filter(s => s.signal_type === 'sell').length
   const avgConf = signals.length ? Math.round(signals.reduce((a, s) => a + s.confidence, 0) / signals.length) : 0
-  const bullish = buys > sells
+
+  // Market breadth, stated honestly.
+  //
+  // This used to be `buys > sells`, which had two ways of lying. With an
+  // empty board (0 vs 0) it fell through to "Bearish" in alarm red while
+  // signals were still loading. And it ignored NEUTRAL entirely, so a
+  // typical day of 1 bullish / 0 bearish / 45 neutral was announced as
+  // "Bullish" off a single asset out of 46.
+  const neutrals = signals.length - buys - sells
+  const breadth = (() => {
+    if (signals.length === 0) {
+      return { label: '—', sub: 'waiting for analysis', color: 'var(--text-muted)' }
+    }
+    // When most of the board has no direction, that IS the finding.
+    if (neutrals / signals.length >= 0.8) {
+      return {
+        label: 'Mixed',
+        sub: `${neutrals} of ${signals.length} neutral`,
+        color: 'var(--amber)',
+      }
+    }
+    const sub = `${buys} bullish vs ${sells} bearish`
+    if (buys > sells) return { label: 'Bullish', sub, color: 'var(--accent)' }
+    if (sells > buys) return { label: 'Bearish', sub, color: 'var(--red)' }
+    return { label: 'Even', sub, color: 'var(--amber)' }
+  })()
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-primary)' }}>
@@ -626,12 +651,14 @@ export default function DashboardPage() {
 
         {/* Stats row — factual metrics only */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <StatCard label="Bullish setups" value={String(buys)} sub={`${signals.length} assets analyzed`} color="var(--accent)" />
-          <StatCard label="Bearish setups" value={String(sells)} sub="Distribution patterns" color="var(--red)" />
-          <StatCard label="Avg confidence" value={`${avgConf}%`} sub="Across current analysis" />
-          <StatCard label="Market breadth" value={bullish ? 'Bullish' : 'Bearish'}
-            sub={`${buys} bullish vs ${sells} bearish`}
-            color={bullish ? 'var(--accent)' : 'var(--red)'} />
+          <StatCard label="Bullish setups" value={signals.length ? String(buys) : '—'}
+            sub={signals.length ? `${signals.length} assets analyzed` : 'waiting for analysis'}
+            color="var(--accent)" />
+          <StatCard label="Bearish setups" value={signals.length ? String(sells) : '—'}
+            sub="Distribution patterns" color="var(--red)" />
+          <StatCard label="Avg confidence" value={signals.length ? `${avgConf}%` : '—'}
+            sub="Across current analysis" />
+          <StatCard label="Market breadth" value={breadth.label} sub={breadth.sub} color={breadth.color} />
         </div>
 
         {/* What changed in the last 24h */}
