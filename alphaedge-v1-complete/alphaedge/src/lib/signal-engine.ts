@@ -242,6 +242,24 @@ export async function generateAndCacheAllSignals(
     (prevRows ?? []).map(r => [r.ticker as string, r.signal_type as string])
   )
 
+  // A coin absent from the cache isn't necessarily new — a failed market-data
+  // fetch drops it for a cycle, and without this it would come back looking
+  // like a first sighting and post a bogus "new asset" row to the public
+  // track record. Fall back to the last stance actually recorded for it.
+  const absent = snapshots.map(s => s.ticker).filter(t => !previousByTicker.has(t))
+  if (absent.length > 0) {
+    const { data: lastKnown } = await supabase
+      .from('signal_history')
+      .select('ticker, signal_type, generated_at')
+      .in('ticker', absent)
+      .order('generated_at', { ascending: false })
+    for (const row of lastKnown ?? []) {
+      const ticker = row.ticker as string
+      // Ordered newest-first, so the first sighting of each ticker wins.
+      if (!previousByTicker.has(ticker)) previousByTicker.set(ticker, row.signal_type as string)
+    }
+  }
+
   for (let i = 0; i < snapshots.length; i += 4) {
     const batch = snapshots.slice(i, i + 4)
     const batchResult = await Promise.allSettled(

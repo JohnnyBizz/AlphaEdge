@@ -183,5 +183,24 @@ export async function fetchAllMarketData(): Promise<MarketSnapshot[]> {
     }
   }
 
-  return cryptoResults.filter(Boolean) as MarketSnapshot[]
+  // Retry whatever failed, once, after a pause. A single coin dropping out
+  // is not harmless: it disappears from the board for that cycle, and when
+  // it returns there's no previous stance to compare against, so it gets
+  // recorded as a brand-new asset on the public track record. Observed for
+  // LTC, TRX, BCH and APT (twice) across three days — transient, and a
+  // second attempt clears it.
+  const ok = cryptoResults.filter(Boolean) as MarketSnapshot[]
+  const missing = TRACKED_ASSETS.crypto.filter(t => !ok.some(s => s.ticker === t))
+  if (missing.length > 0) {
+    console.warn(`Retrying ${missing.length} failed crypto fetch(es): ${missing.join(', ')}`)
+    await sleep(2000)
+    for (const t of missing) {
+      const snap = await fetchCryptoSnapshot(t)
+        .catch(e => { console.error(`Crypto fetch failed on retry: ${t}`, e); return null })
+      if (snap) ok.push(snap)
+      await sleep(hasPaidKey ? 250 : 4500)
+    }
+  }
+
+  return ok
 }
