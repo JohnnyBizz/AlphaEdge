@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import SignalChart from '@/components/SignalChart'
 import GlossaryText from '@/components/GlossaryText'
+import PushToggle from '@/components/PushToggle'
 import { ASSET_NAMES } from '@/lib/assets'
 import {
   fitsProfile, sortSignals, defaultSortFor, zoneDistancePct,
@@ -663,6 +664,9 @@ export default function DashboardPage() {
 
         {/* What changed in the last 24h */}
         <WhatChangedSection />
+
+        {/* Buy-in zone alerts */}
+        <PushToggle />
 
         {/* My Positions */}
         <PositionsSection signals={signals} />
