@@ -19,6 +19,20 @@ export interface SubscriptionRow {
 
 const LIVE_STATUSES = ['active', 'trialing']
 
+// Stripe renews a subscription at the instant the period ends, but our row
+// only catches up when the webhook lands. Treating the old period end as
+// expiry made that gap look like "not subscribed": a real renewal at
+// 00:02:11 left the account locked out at 00:18, sent to the subscribe page,
+// and — because the duplicate-purchase guard reads this same value — allowed
+// two more subscriptions to be created and charged.
+//
+// Status is what Stripe actually asserts: a failed payment moves it to
+// past_due or unpaid, and a cancellation to canceled. So while status is
+// live, a lapsed period end means the webhook is behind, not that access
+// should stop. The window is generous on purpose — the cost of holding
+// access a bit too long is far lower than charging someone twice.
+const RENEWAL_GRACE_MS = 72 * 60 * 60 * 1000
+
 export interface UserSubscription {
   /** Every row for the user, newest period end first. */
   rows: SubscriptionRow[]
@@ -45,8 +59,10 @@ export async function getUserSubscription(
 
   const live = rows.find(r =>
     LIVE_STATUSES.includes(r.status ?? '') &&
-    !!r.current_period_end &&
-    new Date(r.current_period_end).getTime() > now
+    // No period end recorded yet (a brand-new row awaiting its first
+    // webhook) still counts as live — Stripe already took the money.
+    (!r.current_period_end ||
+      new Date(r.current_period_end).getTime() + RENEWAL_GRACE_MS > now)
   ) ?? null
 
   return { rows, live, latest: rows[0] ?? null }
