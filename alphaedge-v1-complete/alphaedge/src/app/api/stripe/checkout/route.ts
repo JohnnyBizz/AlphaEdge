@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createCheckoutSession, createPortalSession } from '@/lib/stripe'
+import { createCheckoutSession, createPortalSession, findLiveStripeSubscription } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getUserSubscription } from '@/lib/subscription'
 
@@ -21,6 +21,22 @@ export async function POST(req: NextRequest) {
         returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
       })
       return NextResponse.json({ url: portal.url })
+    }
+
+    // Second line of defence: ask Stripe directly. Our row can be stale —
+    // a renewal whose webhook hasn't landed leaves it looking expired — and
+    // trusting it alone once let the same account buy three subscriptions in
+    // 66 seconds. Stripe is the authority on what someone is already paying
+    // for, so check there before taking money again.
+    if (latest?.stripe_customer_id) {
+      const existing = await findLiveStripeSubscription(latest.stripe_customer_id)
+      if (existing) {
+        const portal = await createPortalSession({
+          customerId: latest.stripe_customer_id,
+          returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+        })
+        return NextResponse.json({ url: portal.url })
+      }
     }
 
     const session = await createCheckoutSession({

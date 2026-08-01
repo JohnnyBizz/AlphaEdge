@@ -55,3 +55,25 @@ export async function createCheckoutSession({
 export async function createPortalSession({ customerId, returnUrl }: { customerId: string; returnUrl: string }) {
   return stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl })
 }
+
+/**
+ * Whether this customer already has a subscription Stripe considers live.
+ *
+ * Used as the last check before creating a new one. Our own row can lag a
+ * renewal by minutes, and during that gap a customer looks unsubscribed to
+ * us while Stripe is happily billing them — which is how one account ended
+ * up buying three subscriptions inside 66 seconds. Failing open (returning
+ * false when Stripe can't be reached) keeps genuine signups working; the
+ * database check above is still in front of it.
+ */
+export async function findLiveStripeSubscription(customerId: string) {
+  try {
+    const { data } = await stripe.subscriptions.list({
+      customer: customerId, status: 'all', limit: 20,
+    })
+    return data.find(s => s.status === 'active' || s.status === 'trialing') ?? null
+  } catch (err) {
+    console.error('Stripe subscription lookup failed:', err)
+    return null
+  }
+}
