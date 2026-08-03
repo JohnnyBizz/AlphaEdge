@@ -369,7 +369,7 @@ widths(ws, {"A": 30, "B": 7, "C": 9, "D": 12, "E": 12, "F": 13, "G": 11, "H": 12
             "Q": 13, "R": 12, "S": 15, "T": 16, "U": 13, "V": 40})
 
 CAND_FIRST = 5
-CAND_LAST = 84
+CAND_LAST = 204
 
 example = ["equipmentfinancing.com", None, None, 5, 4, 3, 4, 3, "N", "N", 2400, 9000, None,
            None, None, None, None, None, None, None, "Yes",
