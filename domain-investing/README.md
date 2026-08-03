@@ -65,9 +65,10 @@ Set on the Assumptions tab, all editable:
 
 ## What it does not do
 
-It does not check domain availability — nothing in the file talks to a registry. Bulk-paste the
-Domain column into GoDaddy's bulk search (500 at a time) and record the result in the
-Availability column.
+It does not check domain availability — nothing in the file talks to a registry. Column A holds the
+full domain (`name.com`), so select it, copy, and paste straight into GoDaddy's bulk search (500 at
+a time), then record the result in the Availability column. The Ext column derives itself from
+column A via a last-dot lookup — don't type into it.
 
 It also deliberately ignores automated appraisals. The Comp Support criterion asks whether
 comparable names have actually sold instead, which is the only valuation signal with a real

@@ -83,7 +83,7 @@ FIRST = 5
 for i, row in enumerate(C):
     r = FIRST + i
     name, ext, ci, cs, ln, rd, mg, tm, hy, est, tier, note = row
-    for col, val in (("A", name), ("B", ext), ("D", ci), ("E", cs), ("F", ln), ("G", rd),
+    for col, val in (("A", f"{name}.{ext}"), ("D", ci), ("E", cs), ("F", ln), ("G", rd),
                      ("H", mg), ("I", tm), ("J", hy), ("K", None), ("L", est),
                      ("U", "Not yet"), ("V", f"[{tier}] {note}")):
         c = ws[f"{col}{r}"]

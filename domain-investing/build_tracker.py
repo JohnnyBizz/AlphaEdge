@@ -27,6 +27,22 @@ DATE_FMT = 'yyyy-mm-dd'
 thin = Side(style="thin", color="AAAAAA")
 BOX = Border(left=thin, right=thin, top=thin, bottom=thin)
 
+
+def tld_formula(row):
+    """Final label of the full domain in column A, lowercased.
+
+    SUBSTITUTE's instance argument swaps only the last '.' for a sentinel, so FIND locates
+    it regardless of how many labels the name has. Note this returns the last label only:
+    example.co.uk yields "uk", not "co.uk". Fine for the extension lookup, which keys on
+    single-label TLDs and falls back to "other". Kept to pre-2007 functions so LibreOffice
+    can evaluate it.
+    """
+    a = f"$A{row}"
+    n_dots = f"LEN({a})-LEN(SUBSTITUTE({a},\".\",\"\"))"
+    last_dot = f"FIND(CHAR(1),SUBSTITUTE({a},\".\",CHAR(1),{n_dots}))"
+    return (f'=IF({a}="","",IF(ISERROR(FIND(".",{a})),"",'
+            f'LOWER(MID({a},{last_dot}+1,LEN({a})))))')
+
 wb = Workbook()
 
 
@@ -98,9 +114,10 @@ rows = [
                                "That comparison is the Max Rational Bid column on the Candidates tab — "
                                "if your acquisition cost is above it, the name loses money on average "
                                "no matter how good it sounds."),
-    ("Availability", "This file does not check whether a domain is registered. Bulk-paste the Domain "
-                     "column into GoDaddy's bulk search (up to 500 at a time) and mark the result in "
-                     "the Availability column."),
+    ("Availability", "This file does not check whether a domain is registered. Column A holds the full "
+                     "domain, so select it, copy, and paste straight into GoDaddy's bulk search (up to "
+                     "500 at a time), then mark the result in the Availability column. The Ext column "
+                     "derives itself from column A — do not type into it."),
     ("Appraisals", "GoDaddy's automated appraisal is not evidence. Use the Comp Support score instead — "
                    "it asks whether comparable names have actually sold, which is the only valuation "
                    "signal with a buyer behind it."),
@@ -333,12 +350,13 @@ BUY_THRESHOLD, WATCH_THRESHOLD = 4.0, 3.2
 # ---------------------------------------------------------------- Candidates
 ws = wb.create_sheet("Candidates")
 title(ws, "Candidate Pipeline — names under consideration", span=22)
-ws["A2"] = ("Type in the blue columns only. Ext Score, Renewal, and everything from column N rightwards "
-            "are formulas. Row 5 is an example — delete it.")
+ws["A2"] = ("Enter the FULL domain in column A (name.com) — Ext derives itself. Column A is then "
+            "directly copy-pasteable into GoDaddy's bulk search. Type in the blue columns only; "
+            "everything else is a formula. Row 5 is an example — delete it.")
 ws["A2"].font = Font(name=FONT, size=10, italic=True)
 
 cand_headers = [
-    "Domain", "Ext", "Ext Score", "Commercial Intent (1-5)", "Comp Support (1-5)",
+    "Domain (full, e.g. name.com)", "Ext", "Ext Score", "Commercial Intent (1-5)", "Comp Support (1-5)",
     "Length & Memorability (1-5)", "Radio Test (1-5)", "Acquisition Margin (1-5)",
     "TM Risk? (Y/N)", "Hyphen/Digit? (Y/N)", "Acquisition Cost", "Est. Resale Value",
     "Annual Renewal", "Weighted Score", "Hard Filter", "Net After Commission",
@@ -346,14 +364,14 @@ cand_headers = [
     "Availability Checked", "Notes",
 ]
 header_row(ws, 4, cand_headers)
-widths(ws, {"A": 26, "B": 7, "C": 9, "D": 12, "E": 12, "F": 13, "G": 11, "H": 12,
+widths(ws, {"A": 30, "B": 7, "C": 9, "D": 12, "E": 12, "F": 13, "G": 11, "H": 12,
             "I": 10, "J": 11, "K": 13, "L": 14, "M": 12, "N": 12, "O": 11, "P": 15,
             "Q": 13, "R": 12, "S": 15, "T": 16, "U": 13, "V": 40})
 
 CAND_FIRST = 5
 CAND_LAST = 84
 
-example = ["equipmentfinancing", "com", None, 5, 4, 3, 4, 3, "N", "N", 2400, 9000, None,
+example = ["equipmentfinancing.com", None, None, 5, 4, 3, 4, 3, "N", "N", 2400, 9000, None,
            None, None, None, None, None, None, None, "Yes",
            "EXAMPLE ROW — delete. Expired auction. Comps: several 2-word equipment/finance .com in the $5-12k range."]
 
@@ -372,7 +390,7 @@ for row in range(CAND_FIRST, CAND_LAST + 1):
         return c
 
     put("A", vals[0], color=BLUE).alignment = Alignment(horizontal="left", vertical="center")
-    put("B", vals[1], color=BLUE)
+    put("B", tld_formula(row), color=GREEN)
     # Ext score via INDEX/MATCH with fallback to the "other" row
     put("C", f'=IF($B{row}="","",IFERROR(INDEX({EXT_SCORES},MATCH(LOWER($B{row}),{EXT_KEYS},0)),'
              f'INDEX({EXT_SCORES},MATCH("other",{EXT_KEYS},0))))', fmt=NUM2, color=GREEN)
@@ -413,19 +431,20 @@ ws.auto_filter.ref = f"A4:V{CAND_LAST}"
 # ---------------------------------------------------------------- Portfolio
 ws = wb.create_sheet("Portfolio")
 title(ws, "Portfolio — names you actually own", span=14)
-ws["A2"] = ("Blue columns are yours. Carry, cost basis and break-even are formulas that update with "
-            "today's date. Row 5 is an example — delete it.")
+ws["A2"] = ("Enter the FULL domain in column A (name.com) — Ext derives itself. Blue columns are "
+            "yours; carry, cost basis and break-even are formulas that update with today's date. "
+            "Row 5 is an example — delete it.")
 ws["A2"].font = Font(name=FONT, size=10, italic=True)
 
-port_headers = ["Domain", "Ext", "Status", "Acquired", "Acquisition Cost", "Annual Renewal",
+port_headers = ["Domain (full, e.g. name.com)", "Ext", "Status", "Acquired", "Acquisition Cost", "Annual Renewal",
                 "Years Held", "Renewals Paid", "Cumulative Carry", "Total Cost Basis",
                 "Break-Even List Price", "Target List Price", "Currently Listed At", "Notes"]
 header_row(ws, 4, port_headers)
-widths(ws, {"A": 28, "B": 7, "C": 11, "D": 13, "E": 14, "F": 13, "G": 11, "H": 11,
+widths(ws, {"A": 30, "B": 7, "C": 11, "D": 13, "E": 14, "F": 13, "G": 11, "H": 11,
             "I": 14, "J": 14, "K": 16, "L": 15, "M": 15, "N": 40})
 
 PORT_FIRST, PORT_LAST = 5, 104
-port_example = ["equipmentfinancing", "com", "Active", date(2024, 3, 12), 2400, 11, None, None,
+port_example = ["equipmentfinancing.com", None, "Active", date(2024, 3, 12), 2400, 11, None, None,
                 None, None, None, None, 12000, "EXAMPLE ROW — delete."]
 
 for row in range(PORT_FIRST, PORT_LAST + 1):
@@ -443,7 +462,7 @@ for row in range(PORT_FIRST, PORT_LAST + 1):
         return c
 
     put("A", vals[0], color=BLUE, left=True)
-    put("B", vals[1], color=BLUE)
+    put("B", tld_formula(row), color=GREEN)
     put("C", vals[2], color=BLUE)
     put("D", vals[3], fmt=DATE_FMT, color=BLUE)
     put("E", vals[4], fmt=MONEY, color=BLUE)
@@ -478,7 +497,7 @@ widths(ws, {"A": 28, "B": 13, "C": 13, "D": 16, "E": 13, "F": 14, "G": 14, "H": 
             "I": 13, "J": 10, "K": 44})
 
 SALE_FIRST, SALE_LAST = 5, 54
-sale_example = ["equipmentfinancing", date(2026, 5, 20), 11500, "Afternic", 0.20, None, None,
+sale_example = ["equipmentfinancing.com", date(2026, 5, 20), 11500, "Afternic", 0.20, None, None,
                 2433, None, None, "EXAMPLE ROW — delete."]
 
 for row in range(SALE_FIRST, SALE_LAST + 1):
