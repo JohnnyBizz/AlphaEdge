@@ -18,6 +18,7 @@ portfolio unless its expected proceeds beat its expected carry.
 | **Assumptions** | Commission rate, sell-through rate, holding horizon, renewal costs. Drives every calculation in the file. Set this first. |
 | **Rubric** | Six weighted criteria scored 1–5, plus the extension lookup table, hard filters, and verdict thresholds. |
 | **Candidates** | One row per name under consideration. Returns a weighted score, a max rational bid, and a verdict. |
+| **Closeout Screener** | Expired names in GoDaddy's $11→$5 closeout window. Scores name quality and asset quality separately, then returns bid timing. |
 | **Portfolio** | Names owned. Tracks cumulative renewal carry, total cost basis, and break-even list price. |
 | **Sales Log** | Completed sales, net of commission. Feeds realised P&L. |
 | **Dashboard** | Portfolio summary, realised results, sell-through, pipeline counts. |
@@ -52,6 +53,36 @@ At the default 2% annual sell-through over a 5-year horizon that probability is 
 so a name you believe resells for $9,000 is worth roughly $690 in expected net proceeds, minus
 $55 of carry. Pay more than the resulting figure and the name is negative expected value even
 if your resale estimate is correct.
+
+## The Closeout Screener
+
+Two batches of 108 hand-picked names in the equipment finance niche returned **zero** that were
+both available and within max rational bid — 80 taken, 21 premium-listed at 13x–1518x over, and
+7 at registration price that all scored below the BUY bar. Retail channels do not clear the model.
+
+Closeouts do. A closeout is a 5-day reverse auction on an expired name: **$11 on day one, falling
+$1/day to $5**, plus renewal — roughly $16–22 all-in. Same money as a hand-registered leftover,
+but the name carries age, backlinks, prior use, and sometimes traffic.
+
+The tab scores two things and blends them (60/40 by default, editable):
+
+- **Name quality** — extension 25%, commercial intent 40%, length 20%, radio test 15%
+- **Asset quality** — domain age 25%, backlink quality 35%, prior use 25%, traffic 15%
+
+Domain age scores automatically from the years column (<2 = 1, 2–4 = 2, 5–9 = 3, 10–14 = 4,
+15+ = 5). Four hard filters reject outright: spam/penalty history, adult or gambling history,
+trademark risk, hyphen or digit.
+
+The output is a bid-timing instruction, because strong names never survive to the floor:
+
+| Verdict | Combined score | Guidance |
+|---|---|---|
+| `BUY` | ≥ 4.00 | Take it on day 1 at $11 |
+| `BUY CHEAPER` | 3.40–3.99 | Wait to ~$8 (day 3), walk if outbid |
+| `FLOOR ONLY` | 2.80–3.39 | Only at the $5 floor |
+| `SKIP` | < 2.80 | Pass |
+| `OVERPRICED` | any | All-in cost exceeds max rational bid |
+| `REJECT` | any | Hard filter failed |
 
 ## Defaults
 
