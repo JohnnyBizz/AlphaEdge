@@ -48,8 +48,11 @@ def find_assumption(fragment):
 
 COMM = find_assumption("Commission rate on sale")
 MINCOMM = find_assumption("Minimum commission per sale")
-PROB = find_assumption("Probability a listed name sells")
 HORIZON = find_assumption("Holding horizon")
+STR_BASE = find_assumption("Expected sell-through rate")
+PIVOT = find_assumption("Quality pivot score")
+SENS = find_assumption("Quality sensitivity")
+SAFETY = find_assumption("Safety multiple required")
 
 if "Closeout Screener" in wb.sheetnames:
     del wb["Closeout Screener"]
@@ -90,8 +93,9 @@ ws.row_dimensions[2].height = 28
 
 for col, w in {"A": 30, "B": 7, "C": 8, "D": 11, "E": 10, "F": 10, "G": 11, "H": 11, "I": 9,
                "J": 8, "K": 8, "L": 11, "M": 10, "N": 9, "O": 10, "P": 9, "Q": 10, "R": 11,
-               "S": 10, "T": 10, "U": 10, "V": 11, "W": 12, "X": 12, "Y": 10, "Z": 12,
-               "AA": 12, "AB": 15, "AC": 30, "AD": 40}.items():
+               "S": 10, "T": 10, "U": 10, "V": 11, "W": 12, "X": 22, "Y": 13, "Z": 12,
+               "AA": 11, "AB": 16, "AC": 11, "AD": 14, "AE": 13, "AF": 17, "AG": 34,
+               "AH": 40}.items():
     ws.column_dimensions[col].width = w
 
 r = 4
@@ -180,7 +184,7 @@ r += 2
 SUMMARY_ROW = r
 r = section(r, "PIPELINE SUMMARY", 6)
 SUM_FIRST = r
-r += 6  # filled in after the table rows are known
+r += 7  # filled in after the table rows are known
 r += 1
 
 # ---- the table -----------------------------------------------------------------------
@@ -191,7 +195,8 @@ headers = [
     "Age (yrs)", "Age Score", "Backlink Quality (1-5)", "Prior Use (1-5)", "Traffic (1-5)",
     "Spam/Penalty? (Y/N)", "Adult/Gambling? (Y/N)", "TM Risk? (Y/N)", "Hyphen/Digit? (Y/N)",
     "Hard Filter", "Name Score", "Asset Score", "Combined Score", "Est. Resale Value",
-    "Net After Commission", "P(sale)", "Max Rational Bid", "Margin vs Cost", "Verdict",
+    "Valuation Source", "Net After Commission", "Effective STR /yr", "P(sale)",
+    "BREAK-EVEN RESALE", "Value Ratio", "Max Rational Bid", "Margin vs Cost", "Verdict",
     "Bid Guidance", "Notes",
 ]
 for i, h in enumerate(headers, start=1):
@@ -206,7 +211,8 @@ FIRST = HDR + 1
 LAST = FIRST + 119
 
 example = ["fleetlogistics.com", None, None, 11, None, None, 4, 4, 5, 12, None, 4, 4, 2,
-           "N", "N", "N", "N", None, None, None, None, 3500, None, None, None, None, None, None,
+           "N", "N", "N", "N", None, None, None, None, 1200, "HumbleWorth brokerage 2026-08-03",
+           None, None, None, None, None, None, None, None, None,
            "EXAMPLE ROW — delete. Aged logistics site, real editorial links, clean archive."]
 
 for row in range(FIRST, LAST + 1):
@@ -249,40 +255,53 @@ for row in range(FIRST, LAST + 1):
              f'+$N{row}*{W_TRAF})', fmt=NUM2)
     put("V", f'=IF(OR($T{row}="",$U{row}=""),"",$T{row}*{BLEND}+$U{row}*(1-{BLEND}))', fmt=NUM2)
     put("W", v[22], fmt=MONEY, color=BLUE)
-    put("X", f'=IF(OR({A}="",$W{row}=""),"",MAX(0,$W{row}-MAX($W{row}*{COMM},{MINCOMM})))', fmt=MONEY)
-    put("Y", f'=IF({A}="","",{PROB})', fmt=PCT, color=GREEN)
-    put("Z", f'=IF(OR($X{row}="",$E{row}=""),"",MAX(0,$X{row}*$Y{row}-$E{row}*{HORIZON}))', fmt=MONEY)
-    put("AA", f'=IF(OR($Z{row}="",$F{row}=""),"",$Z{row}-$F{row})', fmt=MONEY)
-    put("AB", f'=IF({A}="","",IF($S{row}="FAIL","REJECT",'
-              f'IF($F{row}>$Z{row},"OVERPRICED",'
-              f'IF($V{row}>=4,"BUY",IF($V{row}>=3.4,"BUY CHEAPER",'
-              f'IF($V{row}>=2.8,"FLOOR ONLY","SKIP"))))))')
-    put("AC", f'=IF($AB{row}="","",'
-              f'IF($AB{row}="REJECT","Do not buy at any price",'
-              f'IF($AB{row}="OVERPRICED","All-in cost exceeds max rational bid",'
-              f'IF($AB{row}="BUY","Take it on day 1 at $11 - will not reach the floor",'
-              f'IF($AB{row}="BUY CHEAPER","Wait to about $8 (day 3), walk if outbid",'
-              f'IF($AB{row}="FLOOR ONLY","Only at the $5 floor",'
-              f'"Skip"))))))', left=True)
-    put("AD", v[29], color=BLUE, left=True).alignment = Alignment(horizontal="left", vertical="top",
+    put("X", v[23], color=BLUE, left=True)
+    put("Y", f'=IF(OR({A}="",$W{row}=""),"",MAX(0,$W{row}-MAX($W{row}*{COMM},{MINCOMM})))', fmt=MONEY)
+    put("Z", f'=IF($V{row}="","",{STR_BASE}*MAX(0.05,($V{row}/{PIVOT})^{SENS}))', fmt=PCT)
+    put("AA", f'=IF($Z{row}="","",1-(1-$Z{row})^{HORIZON})', fmt=PCT)
+    put("AB", f'=IF(OR($F{row}="",$AA{row}="",$AA{row}=0),"",'
+              f'($F{row}+$E{row}*{HORIZON})/($AA{row}*(1-{COMM})))', fmt=MONEY)
+    put("AC", f'=IF(OR($W{row}="",$AB{row}="",$AB{row}=0),"",$W{row}/$AB{row})', fmt='0.00"x"')
+    put("AD", f'=IF(OR($Y{row}="",$E{row}="",$AA{row}=""),"",'
+              f'MAX(0,$Y{row}*$AA{row}-$E{row}*{HORIZON}))', fmt=MONEY2)
+    put("AE", f'=IF(OR($AD{row}="",$F{row}=""),"",$AD{row}-$F{row})', fmt=MONEY2)
+    put("AF", f'=IF({A}="","",IF($S{row}="FAIL","REJECT",'
+              f'IF($D{row}="","NEEDS PRICE",'
+              f'IF(OR($W{row}="",$X{row}=""),"NEEDS VALUATION",'
+              f'IF($AC{row}<1,"OVERPRICED",'
+              f'IF(AND($AC{row}>={SAFETY},$V{row}>=4),"BUY",'
+              f'IF($V{row}>=3.4,"BUY CHEAPER",'
+              f'IF($V{row}>=2.8,"FLOOR ONLY","SKIP"))))))))')
+    put("AG", f'=IF($AF{row}="","",'
+              f'IF($AF{row}="REJECT","Do not buy at any price",'
+              f'IF($AF{row}="NEEDS PRICE","Enter the current closeout price",'
+              f'IF($AF{row}="NEEDS VALUATION","Enter a valuation AND its source before bidding",'
+              f'IF($AF{row}="OVERPRICED","Worth less than break-even - walk",'
+              f'IF($AF{row}="BUY","Take it on day 1 at $11 - will not reach the floor",'
+              f'IF($AF{row}="BUY CHEAPER","Wait to about $8 (day 3), walk if outbid",'
+              f'IF($AF{row}="FLOOR ONLY","Only at the $5 floor",'
+              f'"Skip"))))))))', left=True)
+    put("AH", v[32], color=BLUE, left=True).alignment = Alignment(horizontal="left", vertical="top",
                                                                  wrap_text=True)
 
-ws[f"Z{HDR}"].comment = Comment(
-    "Same formula as the Candidates tab: (net proceeds after commission x probability of selling "
-    "within the horizon) minus renewal carry. At closeout prices this is usually comfortably above "
-    "the all-in cost - that is the whole point of the channel.", "Rubric")
+ws[f"AB{HDR}"].comment = Comment(
+    "What this name must resell for to justify its all-in cost, given its own probability of selling "
+    "and the carry meanwhile. No valuation needed to read it - just ask whether the name is "
+    "plausibly worth this much.", "Rubric")
 ws[f"J{HDR}"].comment = Comment(
     "Years since first registration, not since the last transfer. Check a WHOIS history tool.", "Rubric")
-ws[f"AA{HDR}"].comment = Comment(
-    "Max rational bid minus all-in cost. This is your expected-value headroom per name. Negative "
-    "means walk away.", "Rubric")
+ws[f"AE{HDR}"].comment = Comment(
+    "Max rational bid minus all-in cost: expected-value headroom per name. Negative means walk.", "Rubric")
+ws[f"W{HDR}"].comment = Comment(
+    "Requires a source alongside it. Unsourced guesses here are what made the first version of this "
+    "model wrong by 6-30x.", "Rubric")
 
 ws.freeze_panes = f"B{FIRST}"
-ws.auto_filter.ref = f"A{HDR}:AD{LAST}"
+ws.auto_filter.ref = f"A{HDR}:AH{LAST}"
 
 # ---- fill the summary now that the table range is known ------------------------------
-AB_RANGE = f"$AB${FIRST}:$AB${LAST}"
-AA_RANGE = f"$AA${FIRST}:$AA${LAST}"
+AB_RANGE = f"$AF${FIRST}:$AF${LAST}"
+AA_RANGE = f"$AE${FIRST}:$AE${LAST}"
 F_RANGE = f"$F${FIRST}:$F${LAST}"
 A_RANGE = f"$A${FIRST}:$A${LAST}"
 summary = [
@@ -292,6 +311,8 @@ summary = [
      f'=COUNTIF({AB_RANGE},"BUY CHEAPER")+COUNTIF({AB_RANGE},"FLOOR ONLY")', '0'),
     ("REJECT / OVERPRICED / SKIP",
      f'=COUNTIF({AB_RANGE},"REJECT")+COUNTIF({AB_RANGE},"OVERPRICED")+COUNTIF({AB_RANGE},"SKIP")', '0'),
+    ("Needs valuation or price",
+     f'=COUNTIF({AB_RANGE},"NEEDS VALUATION")+COUNTIF({AB_RANGE},"NEEDS PRICE")', '0'),
     ("Total all-in cost of BUY names",
      f'=SUMIF({AB_RANGE},"BUY",{F_RANGE})', MONEY2),
     ("Total EV headroom of BUY names",

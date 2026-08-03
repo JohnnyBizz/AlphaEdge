@@ -90,24 +90,23 @@ assert FIRST + len(C) - 1 <= 204, "batch 2 overruns the formula rows"
 
 for i, (dom, ci, cs, ln, rd, mg, tm, hy, est, pat, note) in enumerate(C):
     r = FIRST + i
-    for col, val in (("A", dom), ("D", ci), ("E", cs), ("F", ln), ("G", rd), ("H", mg),
-                     ("I", tm), ("J", hy), ("K", None), ("L", est),
-                     ("U", "Not yet"), ("V", f"[B2/{pat}] {note}")):
+    for col, val in (("A", dom), ("D", ci), ("E", cs), ("F", ln), ("G", rd),
+                     ("H", tm), ("I", hy), ("J", None), ("K", None), ("L", None),
+                     ("W", "Not yet"), ("X", f"[B2/{pat}] {note}")):
         c = ws[f"{col}{r}"]
         c.value = val
         c.font = Font(name=FONT, size=10, color=BLUE)
         c.fill = NO_FILL
-        if col in ("A", "V"):
-            c.alignment = Alignment(horizontal="left", vertical="top", wrap_text=(col == "V"))
+        if col in ("A", "X"):
+            c.alignment = Alignment(horizontal="left", vertical="top", wrap_text=(col == "X"))
         else:
             c.alignment = Alignment(horizontal="center", vertical="center")
-    ws[f"L{r}"].number_format = '$#,##0;($#,##0);-'
-    ws[f"K{r}"].number_format = '$#,##0.00;($#,##0.00);-'
+    ws[f"K{r}"].number_format = '$#,##0;($#,##0);-'
+    ws[f"J{r}"].number_format = '$#,##0.00;($#,##0.00);-'
 
-ws["A2"] = ("Niche 1: equipment financing & commercial lending. Batch 1 (rows 5-60) checked at GoDaddy "
-            "2026-08-03. Batch 2 (rows 61+) avoids the exhausted 'vertical + financing' and "
-            "'word + capital/lending' patterns; availability not yet checked. Premium figures in "
-            "Acquisition Cost are ASKING prices, not sale comps.")
+ws["A2"] = ("Niche 1: equipment financing & commercial lending. Batch 1 rows 5-60, batch 2 rows 61+. "
+            "Est. Resale Value is empty by design — fill it only from a named source (HumbleWorth, "
+            "NameBio comps, a real offer). Work from BREAK-EVEN RESALE until you have one.")
 ws["A2"].font = Font(name=FONT, size=10, italic=True)
 
 wb.save(WB)

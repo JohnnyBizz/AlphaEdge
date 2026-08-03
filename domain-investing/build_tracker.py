@@ -170,6 +170,17 @@ assumptions = [
     ("Required return multiple on cost", 10, '0.0"x"',
      "Minimum sale-price-to-acquisition-cost ratio you will accept, used to set target list prices. "
      "10x on a $12 hand-reg is a $120 name — set this high, most names never sell at all.", True),
+    ("Quality pivot score (neutral)", 3.0, NUM2,
+     "A name scoring exactly this gets the base sell-through rate above. Better names get a higher "
+     "rate, worse names a lower one.", True),
+    ("Quality sensitivity (0 = off)", 1.0, NUM2,
+     "MODELLING ASSUMPTION, NOT MEASURED DATA. Effective rate = base rate x (score / pivot) ^ this. "
+     "At 1.0 the relationship is linear: a 4.5 name is assumed to sell 1.5x as often as a 3.0 name. "
+     "Set to 0 to disable and give every name the same probability — which is what the first version "
+     "of this model did, and it was wrong, because it made name quality irrelevant to the economics.", True),
+    ("Safety multiple required for BUY", 2.0, '0.0"x"',
+     "How far above break-even a valuation must sit before the verdict is BUY. At 2.0 the name must "
+     "be worth twice what the maths strictly requires — headroom for the valuation being wrong.", True),
 ]
 r = 4
 for label, val, fmt, note, is_input in assumptions:
@@ -207,6 +218,9 @@ MINCOMM = "Assumptions!$B$5"
 STR_C = "Assumptions!$B$6"
 HORIZON = "Assumptions!$B$7"
 MULT = "Assumptions!$B$10"
+PIVOT = "Assumptions!$B$11"
+SENS = "Assumptions!$B$12"
+SAFETY = "Assumptions!$B$13"
 
 # ---------------------------------------------------------------- Rubric
 ws = wb.create_sheet("Rubric")
@@ -219,23 +233,23 @@ ws["A3"].font = Font(name=FONT, size=10, italic=True)
 header_row(ws, 4, ["Criterion", "Weight", "Score 1 — avoid", "Score 3 — marginal", "Score 5 — strong"])
 
 criteria = [
-    ("Extension", 0.20,
+    ("Extension", 0.22,
      "New gTLD (.shop, .xyz, .link) or an obscure ccTLD. Supply is about to expand further when ICANN "
      "reopens the new-gTLD window.",
      ".co, .net, .org, or a strong country ccTLD. Sells, but at a fraction of .com.",
      ".com. Every one of 2026's largest sales was a .com. .ai is a genuine second tier for AI-native "
      "buyers but carries a much higher renewal."),
-    ("Commercial intent", 0.25,
+    ("Commercial intent", 0.30,
      "Hobby, meme, or personal-interest term. Nobody monetises it, so nobody bids.",
      "Real commercial term, but low customer value or a thin buyer pool.",
      "Term in a sector where one customer is worth thousands — finance, insurance, legal, medical, real "
      "estate, B2B SaaS. A $3k domain is a rounding error to that buyer."),
-    ("Comp support", 0.20,
+    ("Comp support", 0.22,
      "No comparable sale you can point to. You are guessing.",
      "Loosely similar names have sold, but at scattered prices or years ago.",
      "Several closely comparable names sold recently at prices you can cite. This is the only "
      "valuation input with an actual buyer behind it."),
-    ("Length & memorability", 0.15,
+    ("Length & memorability", 0.16,
      "Four or more words, over ~20 characters, or a forgettable string.",
      "Two or three words, reasonable length, unremarkable.",
      "One strong dictionary word, or a tight two-word pairing. Short 4-5 character .com remains the "
@@ -244,10 +258,6 @@ criteria = [
      "Has to be spelled out. Homophone traps, doubled letters, invented spellings.",
      "Mostly clear, occasional spelling correction needed.",
      "Say it once on a phone call and the other person types it correctly."),
-    ("Acquisition margin", 0.10,
-     "Asking price is at or above what you think it resells for.",
-     "Some headroom, but thin after commission and carry.",
-     "Buying well under estimated resale value — expired auction, drop catch, or an underpriced listing."),
 ]
 r = 5
 for name, wt, s1, s3, s5 in criteria:
@@ -260,12 +270,12 @@ for name, wt, s1, s3, s5 in criteria:
     ws.row_dimensions[r].height = 58
     r += 1
 
-W_EXT, W_COMM, W_COMP, W_LEN, W_RADIO, W_MARG = [f"Rubric!$B${5+i}" for i in range(6)]
+W_EXT, W_COMM, W_COMP, W_LEN, W_RADIO = [f"Rubric!$B${5+i}" for i in range(5)]
 
 body(ws.cell(row=r, column=1, value="Weight check"), bold=True)
-c = body(ws.cell(row=r, column=2, value="=SUM(B5:B10)"), fmt=PCT, bold=True)
+c = body(ws.cell(row=r, column=2, value="=SUM(B5:B9)"), fmt=PCT, bold=True)
 c.alignment = Alignment(horizontal="center")
-body(ws.cell(row=r, column=3, value='=IF(ABS(B11-1)<0.0001,"OK — weights sum to 100%",'
+body(ws.cell(row=r, column=3, value='=IF(ABS(B10-1)<0.0001,"OK — weights sum to 100%",'
                                     '"ERROR — weights must sum to 100%")'), bold=True, wrap=True)
 WEIGHT_CHECK_ROW = r
 r += 2
@@ -357,76 +367,90 @@ ws["A2"].font = Font(name=FONT, size=10, italic=True)
 
 cand_headers = [
     "Domain (full, e.g. name.com)", "Ext", "Ext Score", "Commercial Intent (1-5)", "Comp Support (1-5)",
-    "Length & Memorability (1-5)", "Radio Test (1-5)", "Acquisition Margin (1-5)",
-    "TM Risk? (Y/N)", "Hyphen/Digit? (Y/N)", "Acquisition Cost", "Est. Resale Value",
-    "Annual Renewal", "Weighted Score", "Hard Filter", "Net After Commission",
-    "P(sale in horizon)", "Expected Carry", "Max Rational Bid", "Verdict",
-    "Availability Checked", "Notes",
+    "Length & Memorability (1-5)", "Radio Test (1-5)", "TM Risk? (Y/N)", "Hyphen/Digit? (Y/N)",
+    "Acquisition Cost", "Est. Resale Value", "Valuation Source", "Annual Renewal",
+    "Weighted Score", "Hard Filter", "Effective STR /yr", "P(sale in horizon)", "Expected Carry",
+    "BREAK-EVEN RESALE", "Value Ratio", "Max Rational Bid", "Verdict", "Availability", "Notes",
 ]
 header_row(ws, 4, cand_headers)
-widths(ws, {"A": 30, "B": 7, "C": 9, "D": 12, "E": 12, "F": 13, "G": 11, "H": 12,
-            "I": 10, "J": 11, "K": 13, "L": 14, "M": 12, "N": 12, "O": 11, "P": 15,
-            "Q": 13, "R": 12, "S": 15, "T": 16, "U": 13, "V": 40})
+widths(ws, {"A": 30, "B": 7, "C": 9, "D": 12, "E": 12, "F": 13, "G": 11, "H": 10, "I": 11,
+            "J": 13, "K": 13, "L": 22, "M": 12, "N": 12, "O": 11, "P": 12, "Q": 13, "R": 12,
+            "S": 15, "T": 11, "U": 14, "V": 18, "W": 18, "X": 44})
 
 CAND_FIRST = 5
 CAND_LAST = 204
 
-example = ["equipmentfinancing.com", None, None, 5, 4, 3, 4, 3, "N", "N", 2400, 9000, None,
-           None, None, None, None, None, None, None, "Yes",
-           "EXAMPLE ROW — delete. Expired auction. Comps: several 2-word equipment/finance .com in the $5-12k range."]
+example = ["equipmentfinancing.com", None, None, 5, 4, 3, 4, "N", "N", 2400, 285,
+           "HumbleWorth brokerage 2026-08-03", None, None, None, None, None, None, None, None,
+           None, None, "Taken",
+           "EXAMPLE ROW — delete. Valuation Source is mandatory: a number with no source does not "
+           "enter the model."]
 
 for row in range(CAND_FIRST, CAND_LAST + 1):
     is_ex = row == CAND_FIRST
     vals = example if is_ex else [None] * len(cand_headers)
     A = f"$A{row}"
 
-    def put(col_letter, value, fmt=None, color=BLACK, cf=None):
+    def put(col_letter, value, fmt=None, color=BLACK, left=False):
         c = ws[f"{col_letter}{row}"]
         c.value = value
         body(c, fmt=fmt, color=color)
         if is_ex:
             c.fill = EX_FILL
-        c.alignment = Alignment(horizontal="center", vertical="center")
+        c.alignment = Alignment(horizontal="left" if left else "center", vertical="center")
         return c
 
-    put("A", vals[0], color=BLUE).alignment = Alignment(horizontal="left", vertical="center")
+    put("A", vals[0], color=BLUE, left=True)
     put("B", tld_formula(row), color=GREEN)
-    # Ext score via INDEX/MATCH with fallback to the "other" row
-    put("C", f'=IF($B{row}="","",IFERROR(INDEX({EXT_SCORES},MATCH(LOWER($B{row}),{EXT_KEYS},0)),'
+    put("C", f'=IF($B{row}="","",IFERROR(INDEX({EXT_SCORES},MATCH($B{row},{EXT_KEYS},0)),'
              f'INDEX({EXT_SCORES},MATCH("other",{EXT_KEYS},0))))', fmt=NUM2, color=GREEN)
-    for i, col in enumerate("DEFGH"):
+    for i, col in enumerate("DEFG"):
         put(col, vals[3 + i], color=BLUE)
+    put("H", vals[7], color=BLUE)
     put("I", vals[8], color=BLUE)
-    put("J", vals[9], color=BLUE)
+    put("J", vals[9], fmt=MONEY2, color=BLUE)
     put("K", vals[10], fmt=MONEY, color=BLUE)
-    put("L", vals[11], fmt=MONEY, color=BLUE)
-    # renewal: default from extension table unless typed over
-    put("M", f'=IF($B{row}="","",IFERROR(INDEX({EXT_RENEW},MATCH(LOWER($B{row}),{EXT_KEYS},0)),'
+    put("L", vals[11], color=BLUE, left=True)
+    put("M", f'=IF($B{row}="","",IFERROR(INDEX({EXT_RENEW},MATCH($B{row},{EXT_KEYS},0)),'
              f'INDEX({EXT_RENEW},MATCH("other",{EXT_KEYS},0))))', fmt=MONEY, color=GREEN)
-    # weighted score
     put("N", f'=IF(OR({A}="",$C{row}=""),"",$C{row}*{W_EXT}+$D{row}*{W_COMM}+$E{row}*{W_COMP}'
-             f'+$F{row}*{W_LEN}+$G{row}*{W_RADIO}+$H{row}*{W_MARG})', fmt=NUM2)
-    put("O", f'=IF({A}="","",IF(OR(UPPER($I{row})="Y",UPPER($J{row})="Y"),"FAIL","PASS"))')
-    put("P", f'=IF(OR({A}="",$L{row}=""),"",MAX(0,$L{row}-MAX($L{row}*{COMM},{MINCOMM})))', fmt=MONEY)
-    put("Q", f'=IF({A}="","",{PROB_CELL})', fmt=PCT, color=GREEN)
-    put("R", f'=IF(OR({A}="",$M{row}=""),"",$M{row}*{HORIZON})', fmt=MONEY)
-    put("S", f'=IF(OR({A}="",$P{row}="",$R{row}=""),"",MAX(0,$P{row}*$Q{row}-$R{row}))', fmt=MONEY, color=BLACK)
-    put("T", f'=IF({A}="","",IF($O{row}="FAIL","REJECT",'
-             f'IF($N{row}>={BUY_THRESHOLD},IF(AND($K{row}<>"",$K{row}>$S{row}),"BUY IF CHEAPER","BUY"),'
-             f'IF($N{row}>={WATCH_THRESHOLD},"WATCH","PASS"))))')
-    put("U", vals[20], color=BLUE)
-    c = put("V", vals[21], color=BLUE)
+             f'+$F{row}*{W_LEN}+$G{row}*{W_RADIO})', fmt=NUM2)
+    put("O", f'=IF({A}="","",IF(OR(UPPER($H{row})="Y",UPPER($I{row})="Y"),"FAIL","PASS"))')
+    # quality-scaled sell-through: base rate x (score / pivot) ^ sensitivity, floored so a weak
+    # name still has some chance rather than exactly zero
+    put("P", f'=IF($N{row}="","",{STR_C}*MAX(0.05,($N{row}/{PIVOT})^{SENS}))', fmt=PCT)
+    put("Q", f'=IF($P{row}="","",1-(1-$P{row})^{HORIZON})', fmt=PCT)
+    put("R", f'=IF($M{row}="","",$M{row}*{HORIZON})', fmt=MONEY)
+    put("S", f'=IF(OR($J{row}="",$Q{row}="",$Q{row}=0),"",($J{row}+$R{row})/($Q{row}*(1-{COMM})))',
+        fmt=MONEY)
+    put("T", f'=IF(OR($K{row}="",$S{row}="",$S{row}=0),"",$K{row}/$S{row})', fmt='0.00"x"')
+    put("U", f'=IF(OR($K{row}="",$Q{row}=""),"",MAX(0,($K{row}-MAX($K{row}*{COMM},{MINCOMM}))'
+             f'*$Q{row}-$R{row}))', fmt=MONEY2)
+    put("V", f'=IF({A}="","",IF($O{row}="FAIL","REJECT",'
+             f'IF($J{row}="","NEEDS PRICE",'
+             f'IF(OR($K{row}="",$L{row}=""),"NEEDS VALUATION",'
+             f'IF($T{row}>={SAFETY},"BUY",IF($T{row}>=1,"MARGINAL","PASS"))))))')
+    put("W", vals[22], color=BLUE)
+    c = put("X", vals[23], color=BLUE, left=True)
     c.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
 ws["S4"].comment = Comment(
-    "Max Rational Bid = (net proceeds after commission x probability of selling within the horizon) "
-    "minus total renewal carry over that horizon. Pay more than this and the name is negative "
-    "expected value even if your resale estimate is right.", "Rubric")
-ws["E4"].comment = Comment(
-    "Score this against the Comps tab. If you cannot name a comparable sale, this is a 1 or 2 — "
-    "not a 3.", "Rubric")
+    "The number to work from. What this name MUST resell for to justify its price, given the "
+    "probability of ever selling it and the carry you pay meanwhile. You do not have to estimate "
+    "a value to use it - just ask whether the name is plausibly worth this much.", "Rubric")
+ws["K4"].comment = Comment(
+    "Requires a source in the next column. An unsourced guess here silently drives every downstream "
+    "number - that is exactly how the first version of this file produced valuations 6-30x too high.",
+    "Rubric")
+ws["P4"].comment = Comment(
+    "Base sell-through rate scaled by the name's own score. This is a modelling assumption, not "
+    "measured data - set Quality sensitivity to 0 on the Assumptions tab to switch it off.", "Rubric")
+ws["T4"].comment = Comment(
+    "Est. Resale Value divided by Break-even Resale. Above 1.0x the name pays for itself on average; "
+    "the Safety Multiple on the Assumptions tab sets how far above 1.0x you require before BUY.",
+    "Rubric")
 ws.freeze_panes = "B5"
-ws.auto_filter.ref = f"A4:V{CAND_LAST}"
+ws.auto_filter.ref = f"A4:X{CAND_LAST}"
 
 # ---------------------------------------------------------------- Portfolio
 ws = wb.create_sheet("Portfolio")
@@ -544,7 +568,7 @@ SALE_G = f"'Sales Log'!$G${SALE_FIRST}:$G${SALE_LAST}"
 SALE_I = f"'Sales Log'!$I${SALE_FIRST}:$I${SALE_LAST}"
 SALE_A = f"'Sales Log'!$A${SALE_FIRST}:$A${SALE_LAST}"
 CAND_A = f"Candidates!$A${CAND_FIRST}:$A${CAND_LAST}"
-CAND_T = f"Candidates!$T${CAND_FIRST}:$T${CAND_LAST}"
+CAND_T = f"Candidates!$V${CAND_FIRST}:$V${CAND_LAST}"
 
 r = 3
 sections = [
@@ -583,12 +607,15 @@ sections = [
     ]),
     ("PIPELINE", [
         ("Candidates evaluated", f'=COUNTIF({CAND_A},"<>")', '0', "Rows on the Candidates tab."),
-        ("Verdict: BUY", f'=COUNTIF({CAND_T},"BUY")', '0', "Passes the score bar and the price maths."),
-        ("Verdict: BUY IF CHEAPER", f'=COUNTIF({CAND_T},"BUY IF CHEAPER")', '0',
-         "Good names above your max rational bid. Bid the max and walk."),
-        ("Verdict: WATCH", f'=COUNTIF({CAND_T},"WATCH")', '0', "Borderline."),
+        ("Verdict: BUY", f'=COUNTIF({CAND_T},"BUY")', '0',
+         "Sourced valuation clears break-even by at least the safety multiple."),
+        ("Verdict: MARGINAL", f'=COUNTIF({CAND_T},"MARGINAL")', '0',
+         "Above break-even but inside the safety margin. Only if you trust the valuation."),
+        ("Verdict: NEEDS VALUATION / PRICE",
+         f'=COUNTIF({CAND_T},"NEEDS VALUATION")+COUNTIF({CAND_T},"NEEDS PRICE")', '0',
+         "Missing a sourced valuation or a real price. The model refuses to guess on your behalf."),
         ("Verdict: PASS / REJECT", f'=COUNTIF({CAND_T},"PASS")+COUNTIF({CAND_T},"REJECT")', '0',
-         "Below the bar or hard-filtered."),
+         "Below break-even, or hard-filtered."),
     ]),
 ]
 

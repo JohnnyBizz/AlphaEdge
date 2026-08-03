@@ -28,31 +28,55 @@ portfolio unless its expected proceeds beat its expected carry.
 
 | Criterion | Weight |
 |---|---|
-| Commercial intent | 25% |
-| Extension | 20% |
-| Comp support | 20% |
-| Length & memorability | 15% |
+| Commercial intent | 30% |
+| Extension | 22% |
+| Comp support | 22% |
+| Length & memorability | 16% |
 | Radio test | 10% |
-| Acquisition margin | 10% |
+
+("Acquisition margin" was removed — the Value Ratio does that job properly, against a real price.)
 
 **Hard filters** reject a name regardless of score: trademark risk, hyphens or digits, four or
 more words, plural/singular confusion with an established site.
 
-**Verdicts:** `BUY` (score ≥ 4.00 and cost ≤ max rational bid) · `BUY IF CHEAPER` (score ≥ 4.00,
-priced above the max bid) · `WATCH` (3.20–3.99) · `PASS` (< 3.20) · `REJECT` (hard filter failed).
+**Verdicts:** `BUY` (Value Ratio ≥ safety multiple) · `MARGINAL` (ratio 1.0–2.0) ·
+`PASS` (ratio < 1.0) · `NEEDS PRICE` / `NEEDS VALUATION` (missing input) ·
+`REJECT` (hard filter failed).
 
-## The number that matters
+## The number that matters: BREAK-EVEN RESALE
+
+The first version of this model asked you to estimate what a name was worth, then compared that
+to its price. That put a guess on the critical path, and the guesses were wrong — populated
+estimates ran **6–30x above** independent valuations, and since Est. Resale Value drives
+Max Rational Bid, Margin and Verdict, every downstream number inherited the error.
+
+The model now inverts the question. Instead of guessing a value, it computes what a name
+**would have to be worth**:
 
 ```
-Max Rational Bid = (Net proceeds after commission × P(sale within horizon)) − Total renewal carry
+Break-even Resale = (Acquisition Cost + Carry) ÷ (P(sale) × (1 − commission))
 ```
 
-where `P(sale within horizon) = 1 − (1 − sell-through rate) ^ horizon years`.
+You need no estimate to use it. A `.com` at $22.99 with $55 of carry must resell for roughly
+**$920** just to break even — so the only question is whether the name is plausibly a
+four-figure name. For `brewingfinancing.com`, independently valued at $59–$285, it plainly
+isn't: Value Ratio 0.31x, verdict `PASS`.
 
-At the default 2% annual sell-through over a 5-year horizon that probability is about 9.6% —
-so a name you believe resells for $9,000 is worth roughly $690 in expected net proceeds, minus
-$55 of carry. Pay more than the resulting figure and the name is negative expected value even
-if your resale estimate is correct.
+**Est. Resale Value now requires a Valuation Source.** A number without one returns
+`NEEDS VALUATION` rather than silently propagating.
+
+### P(sale) scales with quality
+
+Previously every name got the same 9.6% probability regardless of score, so name quality drove
+the score but had **zero** effect on the economics. That was incoherent. Now:
+
+```
+Effective annual rate = base sell-through × (score ÷ pivot) ^ sensitivity
+```
+
+At the default pivot 3.0 and sensitivity 1.0 the relationship is linear — a 4.5 name is assumed
+to sell 1.5x as often as a 3.0 name. **This is a modelling assumption, not measured data.**
+Set sensitivity to 0 on the Assumptions tab to switch it off and revert to a flat rate.
 
 ## The Closeout Screener
 
@@ -101,9 +125,10 @@ full domain (`name.com`), so select it, copy, and paste straight into GoDaddy's 
 a time), then record the result in the Availability column. The Ext column derives itself from
 column A via a last-dot lookup — don't type into it.
 
-It also deliberately ignores automated appraisals. The Comp Support criterion asks whether
-comparable names have actually sold instead, which is the only valuation signal with a real
-buyer behind it.
+On appraisals: automated valuations (GoDaddy's, HumbleWorth's) are estimates, not evidence, and
+a marketplace asking price is neither — it is what a seller hopes for. But an unsourced number
+of your own is worse than any of them. The rule the file enforces is that every valuation names
+its origin, so you can weigh it later.
 
 ## Editing
 

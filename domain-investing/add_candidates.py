@@ -84,14 +84,14 @@ for i, row in enumerate(C):
     r = FIRST + i
     name, ext, ci, cs, ln, rd, mg, tm, hy, est, tier, note = row
     for col, val in (("A", f"{name}.{ext}"), ("D", ci), ("E", cs), ("F", ln), ("G", rd),
-                     ("H", mg), ("I", tm), ("J", hy), ("K", None), ("L", est),
-                     ("U", "Not yet"), ("V", f"[{tier}] {note}")):
+                     ("H", tm), ("I", hy), ("J", None), ("K", None), ("L", None),
+                     ("W", "Not yet"), ("X", f"[{tier}] {note}")):
         c = ws[f"{col}{r}"]
         c.value = val
         c.font = Font(name=FONT, size=10, color=BLUE)
         c.fill = NO_FILL
-        if col in ("A", "V"):
-            c.alignment = Alignment(horizontal="left", vertical="top", wrap_text=(col == "V"))
+        if col in ("A", "X"):
+            c.alignment = Alignment(horizontal="left", vertical="top", wrap_text=(col == "X"))
         else:
             c.alignment = Alignment(horizontal="center", vertical="center")
     ws[f"L{r}"].number_format = '$#,##0;($#,##0);-'
@@ -99,12 +99,14 @@ for i, row in enumerate(C):
 
 # clear leftover example fill on any trailing rows
 for r in range(FIRST + len(C), 85):
-    for col in "ABCDEFGHIJKLMNOPQRSTUV":
+    for col in "ABCDEFGHIJKLMNOPQRSTUVWX":
         ws[f"{col}{r}"].fill = NO_FILL
 
 ws["A2"] = (f"Niche 1: equipment financing & commercial lending — {len(C)} candidates. "
-            "Acquisition Cost is deliberately blank: fill it in after you check availability and "
-            "price, and the Verdict will re-resolve against Max Rational Bid.")
+            "Est. Resale Value is deliberately EMPTY. The earlier version of this file filled it with "
+            "unsourced guesses that ran 6-30x above independent valuations, and every downstream "
+            "number inherited the error. Use BREAK-EVEN RESALE instead: it tells you what each name "
+            "must be worth, with no estimate required.")
 ws["A2"].font = Font(name=FONT, size=10, italic=True)
 
 wb.save(WB)

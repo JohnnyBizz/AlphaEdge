@@ -33,14 +33,14 @@ for r in range(FIRST, LAST + 1):
     if dom in AVAILABLE:
         n_avail += 1
         price = AVAILABLE[dom]
-        ws[f"K{r}"].value = price
-        ws[f"K{r}"].number_format = MONEY2
+        ws[f"J{r}"].value = price
+        ws[f"J{r}"].number_format = MONEY2
         status = "Available - reg" if price == HANDREG else "Available - premium"
     else:
-        ws[f"K{r}"].value = None
+        ws[f"J{r}"].value = None
         status = "Taken"
-    ws[f"U{r}"].value = status
-    for col in ("K", "U"):
+    ws[f"W{r}"].value = status
+    for col in ("J", "W"):
         c = ws[f"{col}{r}"]
         c.font = Font(name=FONT, size=10, color=BLUE)
         c.alignment = Alignment(horizontal="center", vertical="center")
