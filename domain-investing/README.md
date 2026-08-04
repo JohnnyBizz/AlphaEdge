@@ -23,6 +23,7 @@ portfolio unless its expected proceeds beat its expected carry.
 | **Sales Log** | Completed sales, net of commission. Feeds realised P&L. |
 | **Dashboard** | Portfolio summary, realised results, sell-through, pipeline counts. |
 | **Comps** | Published market benchmarks with sources, for calibrating the Comp Support score. |
+| **Market Frequency** | How often domains sell and at what prices, with a calibrator that converts a break-even into a percentile. Sourced. |
 
 ## The scoring rubric
 
@@ -107,6 +108,25 @@ The output is a bid-timing instruction, because strong names never survive to th
 | `SKIP` | < 2.80 | Pass |
 | `OVERPRICED` | any | All-in cost exceeds max rational bid |
 | `REJECT` | any | Hard filter failed |
+
+## Market frequency — the reality check
+
+Sourced on the Market Frequency tab, from 480,667 .com sales (Jan 2024 – May 2026):
+
+| Price band | Share of sales | Clears this floor |
+|---|---|---|
+| Under $100 | 30.5% (derived) | 100% |
+| $100 – $999 | 56.5% (median $255) | 69.5% |
+| $1,000 – $9,999 | 12.4% | 13.0% |
+| $10,000 – $99,999 | 0.6% | 0.64% |
+| $100,000+ | 0.04% (198 sales in 28 months) | 0.04% |
+
+**87% of .com sales close under $1,000.** Median .com sale is $818; Sedo's all-TLD median is $549.
+Volume runs roughly 700 sales/day above $100, plus ~3x that below it.
+
+The tab includes a calibrator: enter a break-even and it log-interpolates what share of sales
+clear it. A $700 break-even sits at **21.8% — roughly one sale in 4.6**. So the name has to sell
+*and* fetch an above-median price. Two independent things.
 
 ## Defaults
 
