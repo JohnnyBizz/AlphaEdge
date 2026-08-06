@@ -149,13 +149,56 @@ ws.cell(row=r, column=1, value="Note: the 'Under $100' share is DERIVED (87% und
     Font(name=FONT, size=9, italic=True, color="C00000")
 r += 2
 
+r = section(r, "DERIVING THE SELL-THROUGH RATE — where the Assumptions figure comes from")
+for i, h in enumerate(["Step", "Value", "", "Note"], start=1):
+    c = ws.cell(row=r, column=i, value=h)
+    c.font = Font(name=FONT, size=10, bold=True, color="FFFFFF")
+    c.fill = HDR_FILL
+    c.alignment = Alignment(horizontal="center", vertical="center")
+    c.border = BOX
+r += 1
+DERIV_FIRST = r
+body(ws.cell(row=r, column=1, value="Reported sales above $100, annualised"))
+body(ws.cell(row=r, column=2, value=256600), fmt=NUM0, bold=True, center=True)
+body(ws.cell(row=r, column=4, value="H1 2026 NameBio count of 128,300, doubled."), wrap=True, size=9)
+r += 1
+body(ws.cell(row=r, column=1, value="Listed inventory, unique across venues"))
+c = body(ws.cell(row=r, column=2, value=25000000), fmt=NUM0, color=BLUE, bold=True, center=True)
+c.fill = YEL_FILL
+body(ws.cell(row=r, column=4, value="Afternic alone advertises 20m+ listings; Sedo and others add "
+                                    "more, with overlap. 25m is a middle estimate — the least solid "
+                                    "number in this derivation, so it is an editable input."),
+     wrap=True, size=9)
+ws.row_dimensions[r].height = 40
+LISTED_ROW = r
+r += 1
+body(ws.cell(row=r, column=1, value="Implied market-wide sell-through"), bold=True)
+body(ws.cell(row=r, column=2, value=f"=$B${DERIV_FIRST}/$B${LISTED_ROW}"), fmt='0.00%',
+     bold=True, center=True, color=GREEN)
+body(ws.cell(row=r, column=4, value="Change the inventory estimate above and watch this move. "
+                                    "At 20m it is 1.28%, at 30m it is 0.86%, at 40m it is 0.64%."),
+     wrap=True, size=9)
+ws.row_dimensions[r].height = 28
+r += 1
+body(ws.cell(row=r, column=1, value="Rate used on the Assumptions tab"), bold=True)
+body(ws.cell(row=r, column=2, value="=Assumptions!$B$6"), fmt='0.00%', bold=True, center=True,
+     color=GREEN)
+body(ws.cell(row=r, column=4, value="Set to 1.00%: the middle of the derived range, and below the "
+                                    "1.5-2% the industry quotes. Those higher figures are measured on "
+                                    "curated portfolios; assuming you beat the market before you have "
+                                    "evidence is the same mistake as guessing a resale value."),
+     wrap=True, size=9)
+ws.row_dimensions[r].height = 44
+r += 2
+
 r = section(r, "CALIBRATOR — what percentile does your break-even sit at?")
 body(ws.cell(row=r, column=1, value="Enter a break-even resale price"))
 CALC_IN = r
-c = body(ws.cell(row=r, column=2, value=700), fmt=MONEY, color=BLUE, bold=True, center=True)
+c = body(ws.cell(row=r, column=2, value=1800), fmt=MONEY, color=BLUE, bold=True, center=True)
 c.fill = YEL_FILL
 body(ws.cell(row=r, column=4, value="Copy a figure from the BREAK-EVEN RESALE column on the Candidates "
-                                    "tab. At $22.99 acquisition these run about $650-$1,050."), wrap=True, size=9)
+                                    "tab. At $22.99 acquisition and a 1% base sell-through these run about $1,800-$2,100."),
+     wrap=True, size=9)
 ws.row_dimensions[r].height = 28
 r += 1
 
@@ -218,9 +261,10 @@ r += 2
 
 r = section(r, "WHAT THIS MEANS FOR THE MODEL")
 for text in [
-    "87% of .com sales close under $1,000. A typical break-even on a $22.99 registration is around "
-    "$700-$900, which sits near the 78th-80th percentile. So the name does not just have to sell — "
-    "it has to sell for an ABOVE-MEDIAN price. Two independent things have to go right.",
+    "87% of .com sales close under $1,000. At the derived 1% sell-through, a break-even on a $22.99 "
+    "registration is about $1,800-$2,100 — which roughly 10% of .com sales reach, one in ten. So the "
+    "name does not just have to sell, it has to land in the top tenth of the price distribution. Two "
+    "independent things have to go right, and the second is harder than the first.",
     "The median .com sale is $818 and the median across all TLDs at Sedo is $549. If your mental "
     "model of a 'normal' sale is four or five figures, it is wrong by an order of magnitude — that "
     "is the same mistake that put $1,800 on brewingfinancing.com.",

@@ -125,8 +125,23 @@ Sourced on the Market Frequency tab, from 480,667 .com sales (Jan 2024 – May 2
 Volume runs roughly 700 sales/day above $100, plus ~3x that below it.
 
 The tab includes a calibrator: enter a break-even and it log-interpolates what share of sales
-clear it. A $700 break-even sits at **21.8% — roughly one sale in 4.6**. So the name has to sell
-*and* fetch an above-median price. Two independent things.
+clear it. An $1,800 break-even sits at **9.8% — roughly one sale in 10**. So the name has to sell
+*and* land in the top tenth of the price distribution. Two independent things, and the second is
+harder than the first.
+
+### Deriving the sell-through rate
+
+The 1% on the Assumptions tab is derived on the Market Frequency tab, not asserted:
+
+```
+256,600 reported sales/yr above $100  ÷  25,000,000 listed  =  1.03%
+```
+
+256,600 annualises H1 2026's NameBio count. The inventory figure is the softest input — Afternic
+alone advertises 20m+ listings, so the range runs 1.28% (20m) to 0.64% (40m); it is an editable
+cell so you can see the sensitivity. The commonly quoted 1.5–2% is measured on curated portfolios
+or is simply optimistic, and assuming you beat the market before you have evidence is the same
+error as guessing a resale value.
 
 ## Defaults
 
@@ -134,7 +149,7 @@ Set on the Assumptions tab, all editable:
 
 - Commission **20%** — Afternic Boost with GoDaddy aftermarket nameservers. Basic is 15%;
   without GoDaddy nameservers it is 25–30%. $15 minimum per sale.
-- Sell-through **2%/year**, holding horizon **5 years**.
+- Sell-through **1%/year** (derived — see below), holding horizon **5 years**.
 - Renewals default per extension from the Rubric tab's lookup (.com $11, .ai $90, .io $40…).
 - Required return multiple **10x** on acquisition cost.
 

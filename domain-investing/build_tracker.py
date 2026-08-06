@@ -99,6 +99,10 @@ rows = [
     ("5. Sales Log", "One row per sale. Feeds realised P&L and your true sell-through rate."),
     ("6. Dashboard", "Read-only summary. The number to watch is Annual Renewal Burden vs. Realised Net Profit."),
     ("7. Comps", "Reference sales and market benchmarks with sources, for calibrating the Comp Support score."),
+    ("8. Market Frequency", "How often domains actually sell and for how much, with the derivation behind "
+                            "the sell-through rate and a calibrator that turns a break-even into a percentile."),
+    ("9. Closeout Screener", "Expired names in GoDaddy's $11-to-$5 closeout window. Scores name quality and "
+                             "asset quality separately, then gives bid timing."),
     ("", ""),
     ("COLOUR LEGEND", ""),
     ("Blue text", "You type here. These are inputs."),
@@ -108,8 +112,8 @@ rows = [
     ("Orange row", "EXAMPLE ROW showing the expected format. Delete it before you start."),
     ("", ""),
     ("THE ONE THING TO REMEMBER", ""),
-    ("Carry kills portfolios", "At a 2% sell-through rate you sell roughly one name per fifty per year, "
-                               "while paying renewals on all fifty. A name is only worth owning if its "
+    ("Carry kills portfolios", "At a 1% sell-through rate you sell roughly one name per hundred per "
+                               "year, while paying renewals on all hundred. A name is only worth owning if its "
                                "expected net proceeds beat its expected carry over your holding horizon. "
                                "That comparison is the Max Rational Bid column on the Candidates tab — "
                                "if your acquisition cost is above it, the name loses money on average "
@@ -157,9 +161,12 @@ assumptions = [
      "domain at GoDaddy aftermarket nameservers. 20% assumes Boost + GD nameservers.", True),
     ("Minimum commission per sale", 15, MONEY,
      "GoDaddy applies a $15 floor. Only bites on sub-$100 sales.", True),
-    ("Expected sell-through rate (per year)", 0.02, PCT,
-     "Industry norm is 1.5-2% of listed names per year; 1-5% is considered healthy. Raise this only "
-     "once your own Sales Log justifies it.", True),
+    ("Expected sell-through rate (per year)", 0.01, PCT,
+     "DERIVED, see the Market Frequency tab. About 256,600 reported sales a year above $100 against "
+     "20m+ listings on Afternic alone gives 1.28%; against 25-30m unique listings across venues it is "
+     "0.86-1.03%. 1.00% is the middle of that. The commonly quoted 1.5-2% is measured on curated "
+     "portfolios or is simply optimistic - assuming you beat the market before you have evidence is "
+     "the same error as guessing a resale value. Raise it only when your own Sales Log earns it.", True),
     ("Holding horizon (years)", 5, NUM2,
      "Typical time-to-sale for ordinary inventory is 5-10 years. This is the window the max-bid maths "
      "assumes you are willing to fund renewals for.", True),
