@@ -9,6 +9,7 @@ STEPS = [
     "apply_availability_b2.py",  # batch 2 GoDaddy results
     "add_candidates_b3.py",      # batch 3  rows 113-165
     "add_candidates_b4.py",      # batch 4  rows 166-204
+    "add_candidates_b5.py",      # batch 5  rows 205-260
     "apply_valuations.py",       # sourced valuations only
     "add_closeout_screener.py",
     "add_market_frequency.py",

@@ -27,7 +27,7 @@ WB = "/home/user/AlphaEdge/domain-investing/domain-portfolio-tracker.xlsx"
 FONT, BLUE = "Arial", "0000FF"
 NO_FILL = PatternFill(fill_type=None)
 FIRST = 166  # batches 1-3 occupy rows 5-165
-LAST_ROW = 204
+LAST_ROW = 304
 
 # domain, CommercialIntent, CompSupport, Length, Radio, TM, Hyphen, Group, Note
 C = [

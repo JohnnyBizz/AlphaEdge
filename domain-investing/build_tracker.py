@@ -307,7 +307,9 @@ ext_table = [
     ("app", 2, 18, "Niche, mostly end-user rather than investor demand."),
     ("dev", 2, 15, "Same — developer tools, thin aftermarket."),
     ("xyz", 1, 12, "High volume, low realised prices."),
-    ("other", 1, 25, "Default for anything unlisted. Assume the market is thin."),
+    ("other", 1, 50, "Default for anything unlisted — mostly new gTLDs. $50 is realistic, not "
+                     "conservative: GoDaddy renews .center at $49.99 and .fun at $59.99, against "
+                     "$11 for a .com. On a name bought for $1 the renewal IS the investment."),
 ]
 for ext, sc, ren, note in ext_table:
     body(ws.cell(row=r, column=1, value=ext))
@@ -385,7 +387,7 @@ widths(ws, {"A": 30, "B": 7, "C": 9, "D": 12, "E": 12, "F": 13, "G": 11, "H": 10
             "S": 15, "T": 11, "U": 14, "V": 18, "W": 18, "X": 44})
 
 CAND_FIRST = 5
-CAND_LAST = 204
+CAND_LAST = 304
 
 example = ["equipmentfinancing.com", None, None, 5, 4, 3, 4, "N", "N", 2400, 285,
            "HumbleWorth brokerage 2026-08-03", None, None, None, None, None, None, None, None,
