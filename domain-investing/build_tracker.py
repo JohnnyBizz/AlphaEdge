@@ -430,7 +430,8 @@ for row in range(CAND_FIRST, CAND_LAST + 1):
     put("P", f'=IF($N{row}="","",{STR_C}*MAX(0.05,($N{row}/{PIVOT})^{SENS}))', fmt=PCT)
     put("Q", f'=IF($P{row}="","",1-(1-$P{row})^{HORIZON})', fmt=PCT)
     put("R", f'=IF($M{row}="","",$M{row}*{HORIZON})', fmt=MONEY)
-    put("S", f'=IF(OR($J{row}="",$Q{row}="",$Q{row}=0),"",($J{row}+$R{row})/($Q{row}*(1-{COMM})))',
+    put("S", f'=IF(OR($J{row}="",$Q{row}="",$Q{row}=0),"",'
+             f'MAX(($J{row}+$R{row})/($Q{row}*(1-{COMM})),($J{row}+$R{row})/$Q{row}+{MINCOMM}))',
         fmt=MONEY)
     put("T", f'=IF(OR($K{row}="",$S{row}="",$S{row}=0),"",$K{row}/$S{row})', fmt='0.00"x"')
     put("U", f'=IF(OR($K{row}="",$Q{row}=""),"",MAX(0,($K{row}-MAX($K{row}*{COMM},{MINCOMM}))'
@@ -505,14 +506,17 @@ for row in range(PORT_FIRST, PORT_LAST + 1):
     put("H", f'=IF($G{row}="","",MAX(0,INT($G{row})))', fmt='0')
     put("I", f'=IF(OR($F{row}="",$H{row}=""),"",$F{row}*$H{row})', fmt=MONEY)
     put("J", f'=IF(OR({A}="",$E{row}=""),"",$E{row}+IF($I{row}="",0,$I{row}))', fmt=MONEY)
-    put("K", f'=IF(OR($J{row}="",$J{row}=0),"",$J{row}/(1-{COMM}))', fmt=MONEY)
+    # MAX guards the $15 minimum commission: below a ~$75 sale price the flat fee bites
+    # harder than the percentage, so basis/(1-comm) alone lists too low to recover cost.
+    put("K", f'=IF(OR($J{row}="",$J{row}=0),"",MAX($J{row}/(1-{COMM}),$J{row}+{MINCOMM}))', fmt=MONEY)
     put("L", f'=IF($K{row}="","",MAX($K{row},$E{row}*{MULT}))', fmt=MONEY)
     put("M", vals[12], fmt=MONEY, color=BLUE)
     put("N", vals[13], color=BLUE, left=True).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
 ws["K4"].comment = Comment(
-    "Total cost basis grossed up for commission: basis / (1 - commission rate). List below this and "
-    "the sale loses money after GoDaddy takes its cut.", "Rubric")
+    "Total cost basis grossed up for commission, whichever is higher: basis / (1 - commission rate), "
+    "or basis + the $15 minimum commission. The second binds below a ~$75 sale price. List under "
+    "this and the sale loses money after GoDaddy takes its cut.", "Rubric")
 ws["G4"].comment = Comment("Recalculates against today's date every time the file is opened.", "Rubric")
 ws.freeze_panes = "B5"
 ws.auto_filter.ref = f"A4:N{PORT_LAST}"
