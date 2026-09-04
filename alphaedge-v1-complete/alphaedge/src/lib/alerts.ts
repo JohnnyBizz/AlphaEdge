@@ -6,14 +6,13 @@
 
 import { createAdminClient } from './supabase/admin'
 import type { GeneratedSignal } from './signal-engine'
+import { SITE_URL as APP_URL } from './seo'
 
 const LABELS: Record<string, { text: string; color: string }> = {
   buy: { text: 'BULLISH', color: '#059669' },
   sell: { text: 'BEARISH', color: '#dc2626' },
   watch: { text: 'NEUTRAL', color: '#d97706' },
 }
-
-const APP_URL = 'https://www.alphaedge.network'
 
 // A ticker that already produced an alert this recently doesn't produce
 // another, however many times its stance moves in between.

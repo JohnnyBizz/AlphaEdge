@@ -1,6 +1,12 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 
-export const metadata = { title: 'Disclaimer — AlphaEdge' }
+export const metadata: Metadata = {
+  title: 'Disclaimer',
+  description:
+    "AlphaEdge's disclaimer: our AI technical analysis is educational, not financial advice. Learn about trading risks, data limits, and your responsibility.",
+  alternates: { canonical: '/disclaimer' },
+}
 
 export default function DisclaimerPage() {
   return (

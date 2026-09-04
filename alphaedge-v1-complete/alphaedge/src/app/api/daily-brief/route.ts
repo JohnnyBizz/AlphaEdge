@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { setupLine } from '@/lib/alerts'
+import { SITE_URL as APP_URL } from '@/lib/seo'
 
 // ── Daily market brief ────────────────────────────────────
 // Once a day (vercel.json cron), sends every active subscriber a short
@@ -10,8 +11,6 @@ import { setupLine } from '@/lib/alerts'
 // scheduled refresh already produces — one extra AI call per day total.
 
 export const maxDuration = 120
-
-const APP_URL = 'https://www.alphaedge.network'
 
 type SignalRow = {
   ticker: string; market: string; signal_type: string

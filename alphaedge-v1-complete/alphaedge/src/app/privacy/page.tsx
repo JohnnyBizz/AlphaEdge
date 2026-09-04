@@ -1,6 +1,12 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 
-export const metadata = { title: 'Privacy Policy — AlphaEdge' }
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
+  description:
+    'How AlphaEdge collects, uses, and protects your data: account and billing information, third-party processors, retention, cookies, and your privacy rights.',
+  alternates: { canonical: '/privacy' },
+}
 
 export default function PrivacyPage() {
   return (

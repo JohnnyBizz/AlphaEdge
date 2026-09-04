@@ -1,6 +1,12 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 
-export const metadata = { title: 'Terms of Service — AlphaEdge' }
+export const metadata: Metadata = {
+  title: 'Terms of Service',
+  description:
+    "The terms governing use of AlphaEdge's educational crypto analysis subscription: 7-day free trial, billing, cancellation, refunds, acceptable use, and liability.",
+  alternates: { canonical: '/terms' },
+}
 
 export default function TermsPage() {
   return (

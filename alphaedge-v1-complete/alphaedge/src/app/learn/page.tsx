@@ -1,10 +1,13 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { TrendingUp, BookOpen } from 'lucide-react'
 import { GLOSSARY } from '@/lib/glossary'
 
-export const metadata = {
-  title: 'Learn the Basics — AlphaEdge',
-  description: 'Crypto and technical analysis explained in plain English — no jargon, no hype.',
+export const metadata: Metadata = {
+  title: 'Learn Crypto Chart Basics in Plain English',
+  description:
+    'Ten short plain-English lessons on crypto and technical analysis — support, RSI, momentum, volume, risk management — plus a full glossary. Educational only.',
+  alternates: { canonical: '/learn' },
 }
 
 // Public education hub: short plain-English lessons for people who have

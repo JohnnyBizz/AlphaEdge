@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { TRACKED_COIN_KEYS } from '@/lib/assets'
+import { SITE_URL as APP_URL } from '@/lib/seo'
 
 // ── Weekly coin-request digest ────────────────────────────
 // Tallies every outstanding subscriber request and emails the top 3 to the
@@ -10,7 +11,6 @@ import { TRACKED_COIN_KEYS } from '@/lib/assets'
 // the standings cumulative and self-cleaning.
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'johnnyboy0207@gmail.com'
-const APP_URL = 'https://www.alphaedge.network'
 
 type Row = { coin: string; coin_key: string; user_id: string; created_at: string }
 
